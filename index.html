@@ -161,7 +161,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION = "v6.2";
+const VERSION="v6.3";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -350,7 +350,7 @@ async function openDrawer(){
     ${item("shield","نصائح الأمان","safety")}${item("share","شارك التطبيق","share")}${item("info","عن التطبيق","about")}
     <div class="sep"></div>
     <button class="mi" data-a="logout" style="color:var(--no)">${ic("logout")}<span>تسجيل الخروج</span></button>
-    <div class="mu sm ctr" style="padding:14px">مقايضة ${VERSION}<div dir="ltr" style="font-size:10px;word-break:break-all;margin-top:6px;opacity:.8">UID: ${esc(me.uid)}</div><div style="font-size:11px">${esc(adminDbg)}</div></div></div>`;
+    <div class="mu sm ctr" style="padding:14px">مقايضة ${VERSION}</div></div>`;
     $("#dx").onclick=closeDrawer;
     dp.querySelectorAll(".mi").forEach(b=>b.onclick=()=>{const a=b.dataset.a;
       if(a==="theme"){applyTheme(isDark()?"light":"dark");draw(st);}else if(a==="logout")logout();else if(a==="share")shareApp();else go(a);});};
@@ -619,9 +619,9 @@ async function adminView(tab="new"){
     <div class="rrow">${safeImg(ph)?`<img src="${esc(safeImg(ph))}" alt="">`:""}<div style="flex:1;min-width:0"><b>${o?esc(o.title):"العرض محذوف"}</b><div class="mu sm">صاحبه: ${nm(r.ownerUid)}${ow.banned?'<span class="tag">موقوف</span>':""}</div></div></div>
     <div class="mu sm">المبلّغ: ${nm(r.reporterUid)}</div>
     <div class="acts">${o?`<button class="btn sec sm" data-a="view" data-o="${r.offerId}">عرض</button><button class="btn red sm" data-a="del" data-o="${r.offerId}" data-r="${r.id}">حذف العرض</button>`:""}
-    <button class="btn ${ow.banned?"sec":"red"} sm" data-a="ban" data-u="${r.ownerUid}">${ow.banned?"فك الحظر":"حظر صاحبه"}</button>
+    ${r.ownerUid===me.uid?"":`<button class="btn ${ow.banned?"sec":"red"} sm" data-a="ban" data-u="${r.ownerUid}">${ow.banned?"فك الحظر":"حظر صاحبه"}</button>`}
     ${r.reviewed?`<button class="btn sec sm" data-a="rm" data-r="${r.id}">حذف البلاغ</button>`:`<button class="btn sm" data-a="ok" data-r="${r.id}">تمت المراجعة</button>`}</div></div>`;};
-  const userRow=([id,u])=>`<div class="card li" style="cursor:default">${avatar(u.photo,u.name,46)}<div class="bd"><b>${esc(u.name||"")}${u.banned?'<span class="tag">موقوف</span>':""}</b><span>${esc(where_(u))}</span></div><button class="btn ${u.banned?"sec":"red"} sm" data-a="ban" data-u="${id}">${u.banned?"فك الحظر":"حظر"}</button></div>`;
+  const userRow=([id,u])=>`<div class="card li" style="cursor:default">${avatar(u.photo,u.name,46)}<div class="bd"><b>${esc(u.name||"")}${u.banned?'<span class="tag">موقوف</span>':""}</b><span>${esc(where_(u))}</span></div>${id===me.uid?'<span class="tag" style="background:var(--p);color:#fff">أنت</span>':`<button class="btn ${u.banned?"sec":"red"} sm" data-a="ban" data-u="${id}">${u.banned?"فك الحظر":"حظر"}</button>`}</div>`;
   const draw=t=>{
     view.innerHTML=`<div class="seg"><button data-t="new" class="${t==="new"?"on":""}">جديدة (${nw.length})</button><button data-t="done" class="${t==="done"?"on":""}">تمت (${dn.length})</button><button data-t="users" class="${t==="users"?"on":""}">المستخدمين (${us.docs.length})</button></div>
     <div id="al">${t==="users"?Object.entries(um).sort((a,b)=>(b[1].createdAt?.seconds||0)-(a[1].createdAt?.seconds||0)).map(userRow).join("")||emptyBox("user","مفيش مستخدمين"):(t==="new"?nw:dn).map(repCard).join("")||emptyBox("check",t==="new"?"مفيش بلاغات جديدة":"مفيش بلاغات سابقة")}</div>`;
