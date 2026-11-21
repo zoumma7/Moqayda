@@ -161,7 +161,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION = "v6.1";
+const VERSION = "v6.2";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -230,7 +230,7 @@ const isDark=()=>document.documentElement.dataset.theme==="dark";
 
 /* state */
 let me=null,prof=null,unsub=null,unsubBadge=null,lastUnread=0,curView="",depth=0;
-let allOffers=[],fq="",fc="",fg="",isAdm=false,pendingReports=0;
+let allOffers=[],fq="",fc="",fg="",isAdm=false,pendingReports=0,adminDbg="";
 const stopChat=()=>{if(unsub){unsub();unsub=null}};
 
 /* sheet + drawer */
@@ -315,7 +315,7 @@ onAuthStateChanged(auth,async u=>{
   if(!u){loginView();return;}
   document.body.className="nonav";$("#hd").style.display="flex";view.innerHTML=loader;
   try{const s=await getDoc(doc(db,"users",u.uid));prof=s.exists()?s.data():null;}catch(e){toast("خطأ في التحميل: "+(e.code||e.message));}
-  try{isAdm=(await getDoc(doc(db,"admins",u.uid))).exists();}catch{isAdm=false;}
+  try{isAdm=(await getDoc(doc(db,"admins",u.uid))).exists();adminDbg=isAdm?"أدمن ✅":"مفيش مستند باسم الـ UID ده في admins";}catch(e){isAdm=false;adminDbg="خطأ: "+(e.code||e.message);}
   if(prof&&prof.banned){bannedView();return;}
   (!prof||!prof.complete)?go("setup",null,"replace"):go("home",null,"replace");
 });
@@ -350,7 +350,7 @@ async function openDrawer(){
     ${item("shield","نصائح الأمان","safety")}${item("share","شارك التطبيق","share")}${item("info","عن التطبيق","about")}
     <div class="sep"></div>
     <button class="mi" data-a="logout" style="color:var(--no)">${ic("logout")}<span>تسجيل الخروج</span></button>
-    <div class="mu sm ctr" style="padding:14px">مقايضة ${VERSION}</div></div>`;
+    <div class="mu sm ctr" style="padding:14px">مقايضة ${VERSION}<div dir="ltr" style="font-size:10px;word-break:break-all;margin-top:6px;opacity:.8">UID: ${esc(me.uid)}</div><div style="font-size:11px">${esc(adminDbg)}</div></div></div>`;
     $("#dx").onclick=closeDrawer;
     dp.querySelectorAll(".mi").forEach(b=>b.onclick=()=>{const a=b.dataset.a;
       if(a==="theme"){applyTheme(isDark()?"light":"dark");draw(st);}else if(a==="logout")logout();else if(a==="share")shareApp();else go(a);});};
