@@ -16,7 +16,8 @@ header h1{margin:0;font-size:20px}
 header button{background:transparent;border:0;color:#fff;font-size:14px}
 main{padding:12px;max-width:700px;margin:auto}
 nav{position:fixed;bottom:0;left:0;right:0;background:#fff;border-top:1px solid var(--bd);display:flex;z-index:5}
-nav button{flex:1;border:0;background:none;padding:10px 0;font-size:12px;color:var(--mu)}
+nav button{flex:1;border:0;background:none;padding:10px 0;font-size:12px;color:var(--mu);position:relative}
+.dot{position:absolute;top:4px;left:calc(50% + 6px);background:#dc2626;color:#fff;border-radius:10px;min-width:18px;height:18px;font-size:11px;font-style:normal;display:none;align-items:center;justify-content:center;padding:0 5px}
 nav button.on{color:var(--p);font-weight:700}
 nav button span{display:block;font-size:20px}
 input,select,textarea{width:100%;padding:11px;border:1px solid var(--bd);border-radius:10px;font:inherit;background:#fff;margin-bottom:10px}
@@ -33,7 +34,7 @@ textarea{min-height:80px}
 .want{background:#ecfdf5;color:var(--pd);border-radius:8px;padding:8px;margin:8px 0;font-size:14px}
 .big{width:100%;max-height:300px;object-fit:cover;border-radius:12px}
 .row{display:flex;gap:8px}
-.chat{display:flex;flex-direction:column;height:calc(100vh - 200px)}
+.chat{display:flex;flex-direction:column;height:calc(100vh - 300px);height:calc(100dvh - 300px);min-height:200px}
 .msgs{flex:1;overflow-y:auto;padding:6px}
 .m{max-width:78%;padding:8px 12px;border-radius:14px;margin:4px 0;font-size:15px;word-wrap:break-word}
 .m.me{background:var(--p);color:#fff;margin-right:auto;margin-left:0;border-bottom-left-radius:4px}
@@ -53,7 +54,7 @@ textarea{min-height:80px}
 <button data-v="home" class="on"><span>🏠</span>الرئيسية</button>
 <button data-v="add"><span>➕</span>أضف عرض</button>
 <button data-v="mine"><span>📦</span>عروضي</button>
-<button data-v="chats"><span>💬</span>الرسائل</button>
+<button data-v="chats"><span>💬</span>الرسائل<i class="dot" id="bd"></i></button>
 </nav>
 
 <script type="module">
@@ -79,12 +80,39 @@ const GOVS = ["القاهرة","الجيزة","الإسكندرية","الدقه
 
 const $ = s => document.querySelector(s);
 const view = $("#view");
-let me = null, unsub = null, allOffers = [], photo = "";
+let me = null, unsub = null, allOffers = [], photo = "", curView = "", unsubBadge = null, lastUnread = 0;
 
 const esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const opts = (arr, ph) => `<option value="">${ph}</option>` + arr.map(a => `<option>${a}</option>`).join("");
 function toast(t){const e=$("#toast");e.textContent=t;e.style.display="block";setTimeout(()=>e.style.display="none",2500)}
 function stopChat(){if(unsub){unsub();unsub=null}}
+function isUnread(c){
+  if(!me || !c.lastFrom || c.lastFrom === me.uid || !c.lastAt) return false;
+  const r = c.reads && c.reads[me.uid];
+  return !r || r.seconds < c.lastAt.seconds;
+}
+function setBadge(n){
+  const b = $("#bd"); if(!b) return;
+  b.style.display = n ? "flex" : "none"; b.textContent = n > 9 ? "9+" : n;
+  document.title = n ? "(" + n + ") مقايضة" : "مقايضة";
+  try{ n ? navigator.setAppBadge && navigator.setAppBadge(n) : navigator.clearAppBadge && navigator.clearAppBadge(); }catch{}
+}
+function markRead(cid){
+  updateDoc(doc(db,"chats",cid), {["reads."+me.uid]: serverTimestamp()}).catch(()=>{});
+}
+function watchUnread(){
+  if(unsubBadge){ unsubBadge(); unsubBadge = null; }
+  lastUnread = 0; setBadge(0);
+  if(!me) return;
+  let first = true;
+  unsubBadge = onSnapshot(query(collection(db,"chats"), where("participants","array-contains",me.uid)), s => {
+    const n = s.docs.filter(d => isUnread(d.data())).length;
+    setBadge(n);
+    if(!first && n > lastUnread && curView !== "chat") toast("📩 رسالة جديدة");
+    lastUnread = n; first = false;
+    if(curView === "chats") chatsView();
+  }, () => {});
+}
 
 /* ---------- Auth ---------- */
 $("#out").onclick = () => signOut(auth);
@@ -92,6 +120,7 @@ onAuthStateChanged(auth, u => {
   me = u;
   $("#out").style.display = u ? "" : "none";
   $("#nav").style.display = u ? "flex" : "none";
+  watchUnread();
   u ? go("home") : loginView();
 });
 function loginView(){
@@ -107,6 +136,7 @@ function loginView(){
 document.querySelectorAll("nav button").forEach(b => b.onclick = () => go(b.dataset.v));
 function go(v, arg){
   stopChat();
+  curView = v;
   document.querySelectorAll("nav button").forEach(b => b.classList.toggle("on", b.dataset.v === v));
   ({home:homeView, add:addView, mine:mineView, chats:chatsView, offer:offerView, chat:chatView})[v](arg);
   scrollTo(0,0);
@@ -243,7 +273,8 @@ async function chatsView(){
     const r = s.docs.map(d => ({id:d.id, ...d.data()})).sort((a,b) => (b.lastAt?.seconds||0)-(a.lastAt?.seconds||0));
     $("#list").innerHTML = r.length ? r.map(c => {
       const other = c.participants.find(p => p!==me.uid);
-      return `<div class="li" data-id="${c.id}"><b>${esc(c.names?.[other]||"مستخدم")}</b><div class="mu">${esc(c.offerTitle)}</div><div>${esc(c.lastMsg||"")}</div></div>`;
+      const un = isUnread(c);
+      return `<div class="li" data-id="${c.id}" style="${un?"border-color:#dc2626;background:#fef2f2":""}"><b>${un?"🔴 ":""}${esc(c.names?.[other]||"مستخدم")}</b><div class="mu">${esc(c.offerTitle)}</div><div>${esc(c.lastMsg||"")}</div></div>`;
     }).join("") : `<div class="empty">مفيش محادثات</div>`;
     document.querySelectorAll(".li").forEach(e => e.onclick = () => go("chat", e.dataset.id));
   }catch(e){ toast("خطأ: "+(e.code||e.message)); }
@@ -251,6 +282,7 @@ async function chatsView(){
 async function chatView(cid){
   const cs = await getDoc(doc(db,"chats",cid));
   const c = cs.data(), other = c.participants.find(p => p!==me.uid);
+  if(isUnread(c)) markRead(cid);
   view.innerHTML = `<div class="row" style="align-items:center;justify-content:space-between"><b>${esc(c.names?.[other]||"مستخدم")} · ${esc(c.offerTitle)}</b><button class="btn sec" id="rt" style="width:auto;padding:6px 10px;margin:0">⭐ قيّم</button></div>
   <div class="chat"><div class="msgs" id="ms"></div>
   <div class="row"><input id="mi" placeholder="اكتب رسالة..." style="margin:0"><button class="btn" id="sd" style="width:auto;margin:0">إرسال</button></div></div>`;
@@ -258,11 +290,13 @@ async function chatView(cid){
     const box = $("#ms"); if(!box) return;
     box.innerHTML = s.docs.map(d => { const m = d.data(); return `<div class="m ${m.from===me.uid?"me":"ot"}">${esc(m.text)}</div>`; }).join("");
     box.scrollTop = box.scrollHeight;
+    const last = s.docs[s.docs.length-1]?.data();
+    if(last && last.from !== me.uid && !s.metadata.hasPendingWrites) markRead(cid);
   });
   const send = async () => {
     const t = $("#mi").value.trim(); if(!t) return; $("#mi").value = "";
     await addDoc(collection(db,"chats",cid,"messages"), {text:t, from:me.uid, at:serverTimestamp()});
-    await updateDoc(doc(db,"chats",cid), {lastMsg:t, lastAt:serverTimestamp()});
+    await updateDoc(doc(db,"chats",cid), {lastMsg:t, lastAt:serverTimestamp(), lastFrom:me.uid});
   };
   $("#sd").onclick = send;
   $("#mi").onkeydown = e => { if(e.key==="Enter") send(); };
