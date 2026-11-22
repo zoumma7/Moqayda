@@ -160,7 +160,7 @@ nav .fab svg{width:28px;height:28px}
 <path d="M146 113h26m-7-7 7 7-7 7M174 127h-26m7-7-7 7 7 7" stroke="#ffd566" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g>
 </svg><h1>مقايضة</h1><p>بدّل اللي مش محتاجه بحاجة محتاجها</p><p class="s">من غير فلوس.. ومن غير تعقيد</p><div class="bar"><i></i></div></div>
 
-<header id="hd" style="display:none"><button class="ib" id="mb"></button><div class="ttl" id="ht">مقايضة</div><div class="logo" id="lg"></div></header>
+<header id="hd" style="display:none"><button class="ib" id="mb"></button><div class="ttl" id="ht">مقايضة</div><button class="ib" id="nb" aria-label="الإشعارات" style="position:relative;margin-inline-end:8px"></button><div class="logo" id="lg"></div></header>
 <main id="view"></main>
 <nav id="nav" style="display:none"></nav>
 <div id="drawer"><div class="dbk"></div><aside id="dp"></aside></div>
@@ -183,7 +183,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v6.5";
+const VERSION="v6.6";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -217,6 +217,7 @@ logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5
 image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
 send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
 clip:'<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
 flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/>',
 camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
 box:'<path d="M21 8 12 3 3 8v8l9 5 9-5z"/><path d="m3 8 9 5 9-5M12 13v8"/>',
@@ -288,19 +289,51 @@ function watchUnread(){
     if(!firstSnap&&n>lastUnread&&curView!=="chat")toast("📩 رسالة جديدة");
     lastUnread=n;firstSnap=false;if(curView==="chats")chatsView();},()=>{});}
 
+/* offer notifications */
+let unsubOff=null,notifOffers=[],offFirst=true,nvSeen=0;
+const seenKey=()=>"ns_"+(me?me.uid:"");
+const getSeen=()=>{try{return +localStorage.getItem(seenKey())||0}catch{return 0}};
+const setSeen=t=>{try{localStorage.setItem(seenKey(),String(t))}catch{}};
+const offSec=o=>o.createdAt?.seconds||Math.floor(Date.now()/1000);
+const newOffers=()=>{const x=getSeen();return notifOffers.filter(o=>offSec(o)>x)};
+function setNb(){const n=newOffers().length,b=$("#nbd");if(b){b.style.display=n?"flex":"none";b.textContent=n>9?"9+":n;}}
+async function pushLocal(o){try{if(!("Notification" in window)||Notification.permission!=="granted"||document.visibilityState==="visible")return;
+  const t="🆕 عرض جديد: "+o.title,opt={body:"عاوز يقايض بـ: "+(o.want||"أي حاجة")+(o.gov?" • "+o.gov:""),icon:"icon-192.png",badge:"icon-192.png",tag:"offer-"+o.id,dir:"rtl",lang:"ar"};
+  const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();reg?reg.showNotification(t,opt):new Notification(t,opt);}catch{}}
+function watchOffers(){
+  if(unsubOff){unsubOff();unsubOff=null;}notifOffers=[];offFirst=true;setNb();if(!me)return;
+  if(!getSeen())setSeen(Math.floor(Date.now()/1000));
+  unsubOff=onSnapshot(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(30)),s=>{
+    const prev=new Set(notifOffers.map(o=>o.id));
+    notifOffers=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>o.ownerUid!==me.uid&&(o.status||"open")==="open");
+    if(!offFirst){const fresh=notifOffers.filter(o=>!prev.has(o.id)&&offSec(o)>getSeen());
+      if(fresh.length&&curView!=="notifs"){toast("🆕 عرض جديد: "+fresh[0].title);pushLocal(fresh[0]);}}
+    offFirst=false;setNb();if(curView==="notifs")notifView();},()=>{});}
+function notifView(){
+  const perm="Notification" in window?Notification.permission:"na";
+  view.innerHTML=`${perm==="default"?`<div class="card pad" style="margin-bottom:12px"><b>فعّل تنبيهات الجهاز</b><p class="mu sm" style="margin:6px 0 10px">عشان يوصلك تنبيه بالعروض الجديدة حتى لو التطبيق في الخلفية.</p><button class="btn sm" id="np">${ic("bell")} تفعيل التنبيهات</button></div>`:""}
+  ${notifOffers.length?notifOffers.map(o=>{const ph=safeImg(o.photos?.[0]||o.photo),nw=offSec(o)>nvSeen;
+    return `<div class="card li ${nw?"un":""}" data-o="${o.id}">${ph?`<img src="${esc(ph)}" alt="" style="width:58px;height:58px;border-radius:14px;object-fit:cover;flex:none">`:`<div style="width:58px;height:58px;border-radius:14px;background:var(--soft);display:grid;place-items:center;flex:none">${ic("box")}</div>`}
+    <div class="bd"><b>${nw?"🆕 ":""}${esc(o.title)}</b><span>عاوز: ${esc(o.want||"—")}</span><span>${esc(where_(o))} • ${ago(o.createdAt)}</span></div></div>`;}).join(""):emptyBox("bell","مفيش إشعارات","هتلاقي هنا كل عرض جديد بينزل.")}`;
+  view.querySelectorAll("[data-o]").forEach(c=>c.onclick=()=>go("offer",c.dataset.o));
+  const np=$("#np");if(np)np.onclick=async()=>{try{await Notification.requestPermission();}catch{}notifView();};
+  const top=notifOffers.reduce((m,o)=>Math.max(m,offSec(o)),0);setSeen(Math.max(top,Math.floor(Date.now()/1000)));setNb();
+}
+
 /* nav */
 $("#nav").innerHTML=[["home","home","الرئيسية"],["favs","heart","المفضلة"],["add","plus",""],["chats","chat","الرسائل"],["me","user","حسابي"]].map(([v,i,t])=>
   v==="add"?`<button class="fab" data-v="add" aria-label="أضف عرض">${ic("plus")}</button>`:`<button data-v="${v}">${ic(i)}<span>${t}</span>${v==="chats"?'<i class="dot" id="bd"></i>':""}</button>`).join("");
 document.querySelectorAll("#nav button").forEach(b=>b.onclick=()=>go(b.dataset.v==="add"?"add":b.dataset.v));
 $("#lg").innerHTML=ic("swap");
+$("#nb").innerHTML=ic("bell")+'<i class="dot" id="nbd" style="top:-5px;left:-5px"></i>';$("#nb").onclick=()=>go("notifs");
 
 /* router */
 const V={home:{t:"مقايضة",tab:1},favs:{t:"المفضلة",tab:1},chats:{t:"الرسائل",tab:1},me:{t:"حسابي",tab:1},
   add:{t:"عرض جديد",nonav:1},edit:{t:"تعديل العرض",nonav:1},offer:{t:"تفاصيل العرض"},mine:{t:"عروضي"},swapped:{t:"تمت مقايضتها"},
-  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},admin:{t:"لوحة الإدارة"}};
+  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},admin:{t:"لوحة الإدارة"},notifs:{t:"الإشعارات"}};
 const VIEWS={home:()=>homeView(),favs:()=>favsView(),chats:()=>chatsView(),me:()=>meView(),add:()=>offerForm(),edit:a=>offerForm(a),
   offer:a=>offerView(a),mine:a=>mineView(a),swapped:()=>mineView("done"),chat:a=>chatView(a),user:a=>userView(a),
-  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),admin:a=>adminView(a)};
+  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),admin:a=>adminView(a),notifs:()=>{nvSeen=getSeen();notifView();}};
 function go(v,arg,mode){
   const cfg=V[v];stopChat();closeDrawer();closeSheet();
   const st={v,arg,d:cfg.tab?0:(mode==="replace"?depth:depth+1)};
@@ -310,7 +343,7 @@ function go(v,arg,mode){
 function render(v,arg){
   const cfg=V[v];curView=v;stopChat();
   document.body.className=cfg.nonav?"nonav":"";
-  $("#hd").style.display="flex";$("#nav").style.display=cfg.nonav?"none":"flex";
+  $("#hd").style.display="flex";$("#nav").style.display=cfg.nonav?"none":"flex";$("#nb").style.display=cfg.tab?"grid":"none";
   $("#ht").textContent=cfg.t;
   const mb=$("#mb");mb.style.visibility=cfg.nomenu?"hidden":"visible";
   if(cfg.tab||cfg.nomenu){mb.innerHTML=ic("menu");mb.onclick=openDrawer;}else{mb.innerHTML=ic("back");mb.onclick=goBack;}
@@ -333,7 +366,7 @@ function loginView(){
   $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){toast("تعذر الدخول: "+(e.code||e.message));}};
 }
 onAuthStateChanged(auth,async u=>{
-  me=u;prof=null;isAdm=false;pendingReports=0;watchUnread();
+  me=u;prof=null;isAdm=false;pendingReports=0;watchUnread();watchOffers();
   if(!u){loginView();return;}
   document.body.className="nonav";$("#hd").style.display="flex";view.innerHTML=loader;
   try{const s=await getDoc(doc(db,"users",u.uid));prof=s.exists()?s.data():null;}catch(e){toast("خطأ في التحميل: "+(e.code||e.message));}
@@ -365,7 +398,7 @@ async function openDrawer(){
     <div class="stats"><div><b>${st?st.open:"–"}</b>متاحة</div><div><b>${st?st.done:"–"}</b>اتقايضت</div><div><b>${st&&st.count?st.avg.toFixed(1):"–"}</b>تقييم</div></div></div>
     <div style="padding:10px 0">
     ${item("user","ملفي الشخصي","me")}${item("box","عروضي","mine",st?`<span class="c">${st.open}</span>`:"")}${item("check","تمت مقايضتها","swapped",st?`<span class="c">${st.done}</span>`:"")}
-    ${item("heart","المفضلة","favs",`<span class="c">${(prof.favs||[]).length}</span>`)}${item("chat","الرسائل","chats")}
+    ${item("heart","المفضلة","favs",`<span class="c">${(prof.favs||[]).length}</span>`)}${item("chat","الرسائل","chats")}${item("bell","الإشعارات","notifs",newOffers().length?`<span class="num">${newOffers().length}</span>`:"")}
     ${isAdm?item("flag","لوحة الإدارة","admin",pendingReports?`<span class="num">${pendingReports}</span>`:""):""}
     <div class="sep"></div>
     <button class="mi" data-a="theme">${ic("moon")}<span>الوضع الليلي</span><span class="sw ${isDark()?"on":""}"></span></button>
