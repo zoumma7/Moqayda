@@ -150,6 +150,7 @@ nav .fab svg{width:28px;height:28px}
 #splash .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#fff0b3,#e2b043);animation:ld 2.4s ease-out forwards}
 @keyframes ld{to{width:100%}}
 .swp{display:flex;align-items:center;gap:8px;margin:12px 0}.swp>div{flex:1;min-width:0;text-align:center}.swp img,.swp .ph{width:76px;height:76px;border-radius:16px;object-fit:cover;margin:0 auto 6px;display:grid;place-items:center;background:var(--soft);font-size:30px}.swp small{display:block;color:var(--mu);font-size:11.5px}.swp b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ar2{flex:none!important;width:34px!important;height:34px;border-radius:50%;background:var(--g);color:#fff;display:grid;place-items:center}.ar2 svg{width:18px;height:18px}
+.wchips{display:flex;flex-wrap:wrap;gap:8px}.wch{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pt);padding:6px 6px 6px 12px;border-radius:20px;font-weight:700;font-size:13.5px}.wch button{border:0;background:rgba(0,0,0,.12);color:inherit;width:20px;height:20px;border-radius:50%;line-height:18px;cursor:pointer;padding:0}
 </style>
 </head>
 <body>
@@ -184,7 +185,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.0";
+const VERSION="v7.1";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -218,6 +219,7 @@ logout:'<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><path d="m16 17 5-5-5
 image:'<rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="m21 15-5-5L5 21"/>',
 send:'<path d="m22 2-7 20-4-9-9-4z"/><path d="M22 2 11 13"/>',
 clip:'<path d="m21.4 11-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/>',
+target:'<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>',
 bell:'<path d="M18 8a6 6 0 0 0-12 0c0 7-3 9-3 9h18s-3-2-3-9M13.7 21a2 2 0 0 1-3.4 0"/>',
 flag:'<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1zM4 22v-7"/>',
 camera:'<path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/>',
@@ -308,7 +310,7 @@ function watchOffers(){
     const prev=new Set(notifOffers.map(o=>o.id));
     notifOffers=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>o.ownerUid!==me.uid&&(o.status||"open")==="open");
     if(!offFirst){const fresh=notifOffers.filter(o=>!prev.has(o.id)&&offSec(o)>getSeen());
-      if(fresh.length&&curView!=="notifs"){toast("🆕 عرض جديد: "+fresh[0].title);pushLocal(fresh[0]);}}
+      if(fresh.length&&curView!=="notifs"){const hit=fresh.find(o=>(prof?.wants||[]).some(w=>wmatch(w,o)));toast(hit?"🎯 عرض بيناسب اللي بتدور عليه: "+hit.title:"🆕 عرض جديد: "+fresh[0].title);pushLocal(hit||fresh[0]);}}
     offFirst=false;setNb();if(curView==="notifs")notifView();},()=>{});}
 function notifView(){
   const perm="Notification" in window?Notification.permission:"na";
@@ -345,12 +347,12 @@ function watchProps(){
       if(o&&o.status==="pending"&&p.status==="declined")toast("طلبك على «"+p.toTitle+"» اترفض");
       if(p.status==="accepted"&&!p.applied)applyAccepted(p);}
     propOut=nm;refresh();},()=>{});}
-async function proposeSheet(o,owner){
+async function proposeSheet(o,owner,preId){
   let mine=[];try{const s=await getDocs(query(collection(db,"offers"),where("ownerUid","==",me.uid)));mine=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>(x.status||"open")==="open");}catch{}
   if(!mine.length){sheet(`<h3>مفيش عروض متاحة عندك</h3><p class="mu">لازم تضيف عرض الأول عشان تقدر تقترح بيه مقايضة.</p><button class="btn" id="ad">${ic("plus")} أضف عرض</button>`);$("#ad").onclick=()=>go("add");return;}
   const th=x=>{const u=safeImg(x.photos?.[0]||x.photo);return u?`<img src="${esc(u)}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover">`:`<span style="font-size:22px">📦</span>`;};
   sheet(`<h3>اعرض مقايضة</h3><p class="mu sm" style="margin:0 0 8px">اختار اللي هتقايضه بـ «${esc(o.title)}»</p>
-  <div style="max-height:36vh;overflow:auto">${mine.map((x,i)=>`<label class="opt"><input type="radio" name="mo" value="${i}" ${i===0?"checked":""}>${th(x)}<b>${esc(x.title)}</b></label>`).join("")}</div>
+  <div style="max-height:36vh;overflow:auto">${mine.map((x,i)=>`<label class="opt"><input type="radio" name="mo" value="${i}" ${(preId?x.id===preId:i===0)?"checked":""}>${th(x)}<b>${esc(x.title)}</b></label>`).join("")}</div>
   <div class="fld"><textarea id="pn" maxlength="200" placeholder="رسالة لصاحب العرض (اختياري)"></textarea></div><button class="btn gold" id="ps">${ic("send")} إرسال الطلب</button>`);
   $("#ps").onclick=async()=>{const m=mine[+document.querySelector("input[name=mo]:checked").value];
     if(allProps().some(p=>p.fromUid===me.uid&&p.status==="pending"&&p.toOfferId===o.id&&p.myOfferId===m.id))return toast("بعتّ الطلب ده قبل كده");
@@ -397,6 +399,49 @@ function propsView(tab){
     }catch(err){toast("فشل: "+(err.code||err.message));}};
 }
 
+/* smart matching */
+const norm=t=>String(t||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[^\p{L}\p{N}\s]/gu," ");
+const STOP=new Set(["او","اي","ان","في","من","علي","الي","مع","ده","دي","بس","كل","حاجه","نفس","القيمه","قيمه","مستعمل","جديد","عاوز","عايز","ابدل","بدل","مقابل","حاله","ممتازه","شغال","جيد"].map(norm));
+const toks=t=>norm(t).split(/\s+/).map(w=>w.replace(/^(وال|بال|ال)/,"")).filter(w=>w.length>=3&&!STOP.has(w));
+const wmatch=(want,o)=>{const ts=toks(want);if(!ts.length)return false;const hw=toks([o.title,o.cat,o.desc].join(" "));
+  return ts.some(t=>hw.some(h=>h===t||(t.length>=4&&h.startsWith(t))||(h.length>=4&&t.startsWith(h))));};
+let matchCount=0;
+function findMatches(all){
+  const open=o=>(o.status||"open")==="open",my=all.filter(o=>o.ownerUid===me.uid&&open(o)),others=all.filter(o=>o.ownerUid!==me.uid&&open(o)),wants=prof.wants||[];
+  const perfect=[],wish=[];
+  for(const x of others){
+    const wishHit=wants.some(w=>wmatch(w,x)),xWants=my.filter(m=>wmatch(x.want,m));
+    const mutual=xWants.find(m=>wmatch(m.want,x))||(wishHit?xWants[0]:null);
+    if(mutual)perfect.push({x,m:mutual});else if(wishHit)wish.push(x);}
+  matchCount=perfect.length+wish.length;return {perfect,wish};
+}
+async function loadAllOffers(){const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(200)));return s.docs.map(d=>({id:d.id,...d.data()}));}
+async function saveWants(w){prof.wants=w;try{await updateDoc(doc(db,"users",me.uid),{wants:w});}catch(e){toast("فشل الحفظ: "+(e.code||e.message));}}
+async function matchesView(){
+  view.innerHTML=loader;let all=[];try{all=await loadAllOffers();}catch(e){toast("خطأ: "+(e.code||e.message));}
+  const draw=()=>{const {perfect,wish}=findMatches(all),wants=prof.wants||[];
+    const img=u=>safeImg(u)?`<img src="${esc(safeImg(u))}" alt="">`:`<div class="ph">📦</div>`,ph=o=>o.photos?.[0]||o.photo;
+    view.innerHTML=`<div class="card pad" style="margin-bottom:14px"><b>${ic("search")} أنا دايّر على…</b><p class="mu sm" style="margin:4px 0 10px">اكتب الحاجات اللي بتدور عليها، وهنبلّغك أول ما ينزل عرض يناسبها.</p>
+    <div class="wchips">${wants.map((w,i)=>`<span class="wch">${esc(w)}<button data-r="${i}" aria-label="حذف">×</button></span>`).join("")||'<span class="mu sm">لسه مضفتش حاجة</span>'}</div>
+    <div class="row2" style="margin-top:10px"><input id="wi" maxlength="40" placeholder="مثلاً: لابتوب، دراجة، كاميرا"><button class="btn sm" id="wa" style="flex:none">إضافة</button></div></div>
+    <h3 style="margin:6px 4px 10px">🎯 مقايضات مثالية (${perfect.length})</h3>
+    ${perfect.map(({x,m})=>`<div class="card pad" style="margin-bottom:12px"><div class="mu sm">${esc(where_(x))} • ${esc(x.ownerName||"")}</div>
+      <div class="swp"><div>${img(ph(m))}<small>عرضك</small><b>${esc(m.title)}</b></div><span class="ar2">${ic("swap")}</span><div>${img(ph(x))}<small>عرضه</small><b>${esc(x.title)}</b></div></div>
+      <div class="mu sm" style="text-align:center">هو عاوز حاجة زي عرضك، وانت بتدور على اللي عنده</div>
+      <div class="acts"><button class="btn gold sm" data-p="${x.id}" data-m="${m.id}">${ic("swap")} اعرض مقايضة</button><button class="btn sec sm" data-o="${x.id}">التفاصيل</button></div></div>`).join("")||emptyBox("swap","مفيش مقايضة مثالية دلوقتي","أضف عروضك واكتب اللي بتدور عليه، وهتظهر هنا أول ما يتلاقي طرف مناسب.")}
+    ${wish.length?`<h3 style="margin:14px 4px 10px">عروض بتدور عليها (${wish.length})</h3>${wish.map(x=>`<div class="card li" data-o="${x.id}">${safeImg(ph(x))?`<img src="${esc(safeImg(ph(x)))}" alt="" style="width:58px;height:58px;border-radius:14px;object-fit:cover;flex:none">`:""}<div class="bd"><b>${esc(x.title)}</b><span>عاوز: ${esc(x.want||"—")}</span><span>${esc(where_(x))} • ${ago(x.createdAt)}</span></div></div>`).join("")}`:""}`;
+    const add=async()=>{const v=$("#wi").value.trim();if(!v)return;const w=[...(prof.wants||[])];if(w.length>=8)return toast("الحد الأقصى 8 حاجات");if(w.includes(v))return toast("مضافة قبل كده");w.push(v);await saveWants(w);draw();};
+    $("#wa").onclick=add;$("#wi").onkeydown=e=>{if(e.key==="Enter")add();};
+    view.querySelectorAll("[data-r]").forEach(b=>b.onclick=async()=>{const w=[...(prof.wants||[])];w.splice(+b.dataset.r,1);await saveWants(w);draw();});
+    view.querySelectorAll("[data-o]").forEach(b=>b.onclick=()=>go("offer",b.dataset.o));
+    view.querySelectorAll("[data-p]").forEach(b=>b.onclick=async e=>{e.stopPropagation();const x=all.find(o=>o.id===b.dataset.p);let ow=null;try{const u=await getDoc(doc(db,"users",x.ownerUid));ow=u.exists()?u.data():null;}catch{}proposeSheet(x,ow,b.dataset.m);});
+  };draw();
+}
+function matchBanner(){const el=$("#mbn");if(!el||!me||!prof)return;const {perfect,wish}=findMatches(allOffers);
+  el.innerHTML=perfect.length||wish.length?`<div class="card li un" id="mbc" style="margin-bottom:12px">${ic("swap")}<div class="bd"><b>🎯 ${perfect.length?perfect.length+" مقايضة مثالية ليك":wish.length+" عرض بتدور عليه"}</b><span>اضغط لعرضها</span></div></div>`:
+  `<div class="card li" id="mbc" style="margin-bottom:12px">${ic("search")}<div class="bd"><b>اكتب اللي بتدور عليه</b><span>وهنبلّغك بالعروض المناسبة</span></div></div>`;
+  $("#mbc").onclick=()=>go("matches");}
+
 /* nav */
 $("#nav").innerHTML=[["home","home","الرئيسية"],["favs","heart","المفضلة"],["add","plus",""],["chats","chat","الرسائل"],["me","user","حسابي"]].map(([v,i,t])=>
   v==="add"?`<button class="fab" data-v="add" aria-label="أضف عرض">${ic("plus")}</button>`:`<button data-v="${v}">${ic(i)}<span>${t}</span>${v==="chats"?'<i class="dot" id="bd"></i>':""}</button>`).join("");
@@ -407,10 +452,10 @@ $("#nb").innerHTML=ic("bell")+'<i class="dot" id="nbd" style="top:-5px;left:-5px
 /* router */
 const V={home:{t:"مقايضة",tab:1},favs:{t:"المفضلة",tab:1},chats:{t:"الرسائل",tab:1},me:{t:"حسابي",tab:1},
   add:{t:"عرض جديد",nonav:1},edit:{t:"تعديل العرض",nonav:1},offer:{t:"تفاصيل العرض"},mine:{t:"عروضي"},swapped:{t:"تمت مقايضتها"},
-  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},admin:{t:"لوحة الإدارة"},notifs:{t:"الإشعارات"},props:{t:"طلبات المقايضة"}};
+  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},admin:{t:"لوحة الإدارة"},notifs:{t:"الإشعارات"},props:{t:"طلبات المقايضة"},matches:{t:"مقايضات مناسبة"}};
 const VIEWS={home:()=>homeView(),favs:()=>favsView(),chats:()=>chatsView(),me:()=>meView(),add:()=>offerForm(),edit:a=>offerForm(a),
   offer:a=>offerView(a),mine:a=>mineView(a),swapped:()=>mineView("done"),chat:a=>chatView(a),user:a=>userView(a),
-  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),admin:a=>adminView(a),notifs:()=>{nvSeen=getSeen();notifView();},props:a=>propsView(a||"in")};
+  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),admin:a=>adminView(a),notifs:()=>{nvSeen=getSeen();notifView();},props:a=>propsView(a||"in"),matches:()=>matchesView()};
 function go(v,arg,mode){
   const cfg=V[v];stopChat();closeDrawer();closeSheet();
   const st={v,arg,d:cfg.tab?0:(mode==="replace"?depth:depth+1)};
@@ -475,7 +520,7 @@ async function openDrawer(){
     <div class="stats"><div><b>${st?st.open:"–"}</b>متاحة</div><div><b>${st?st.done:"–"}</b>اتقايضت</div><div><b>${st&&st.count?st.avg.toFixed(1):"–"}</b>تقييم</div></div></div>
     <div style="padding:10px 0">
     ${item("user","ملفي الشخصي","me")}${item("box","عروضي","mine",st?`<span class="c">${st.open}</span>`:"")}${item("check","تمت مقايضتها","swapped",st?`<span class="c">${st.done}</span>`:"")}
-    ${item("heart","المفضلة","favs",`<span class="c">${(prof.favs||[]).length}</span>`)}${item("chat","الرسائل","chats")}${item("swap","طلبات المقايضة","props",pendingIn().length?`<span class="num">${pendingIn().length}</span>`:"")}${item("bell","الإشعارات","notifs",newOffers().length?`<span class="num">${newOffers().length}</span>`:"")}
+    ${item("heart","المفضلة","favs",`<span class="c">${(prof.favs||[]).length}</span>`)}${item("chat","الرسائل","chats")}${item("target","مقايضات مناسبة","matches",matchCount?`<span class="num">${matchCount}</span>`:"")}${item("swap","طلبات المقايضة","props",pendingIn().length?`<span class="num">${pendingIn().length}</span>`:"")}${item("bell","الإشعارات","notifs",newOffers().length?`<span class="num">${newOffers().length}</span>`:"")}
     ${isAdm?item("flag","لوحة الإدارة","admin",pendingReports?`<span class="num">${pendingReports}</span>`:""):""}
     <div class="sep"></div>
     <button class="mi" data-a="theme">${ic("moon")}<span>الوضع الليلي</span><span class="sw ${isDark()?"on":""}"></span></button>
@@ -512,7 +557,7 @@ function bindCards(box,onChange){box.onclick=async e=>{const c=e.target.closest(
 /* home */
 async function homeView(){
   view.innerHTML=`<div class="hero"><div class="hi">أهلاً ${esc(first(prof.name))} 👋</div><div class="sub">إيه اللي عندك وعاوز تبدّله النهاردة؟</div></div>
-  <div class="sr">${ic("search")}<input id="q" placeholder="ابحث عن أي حاجة..." value="${esc(fq)}"></div>
+  <div id="mbn"></div><div class="sr">${ic("search")}<input id="q" placeholder="ابحث عن أي حاجة..." value="${esc(fq)}"></div>
   <div class="chips" id="chips"><button class="chip ${fc?"":"on"}" data-c="">الكل</button>${CATS.map(c=>`<button class="chip ${fc===c[0]?"on":""}" data-c="${c[0]}">${c[1]} ${c[0]}</button>`).join("")}</div>
   <div class="row2" style="margin-bottom:12px"><select id="fg">${opts(GOVS,"كل المحافظات",fg)}</select><button class="btn sec sm" id="mg">${ic("pin")} محافظتي</button><button class="btn sec sm" id="rf" aria-label="تحديث">${ic("refresh")}</button></div>
   <div class="grid" id="list">${'<div class="card sk"></div>'.repeat(4)}</div>`;
@@ -524,6 +569,7 @@ async function homeView(){
   bindCards($("#list"));
   try{const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(150)));allOffers=s.docs.map(d=>({id:d.id,...d.data()}));}
   catch(e){allOffers=[];toast("خطأ في التحميل: "+(e.code||e.message));}
+  matchBanner();
   if(curView==="home")renderList();
 }
 function renderList(){const q=fq.trim().toLowerCase();
