@@ -8,7 +8,7 @@
 <link rel="icon" href="icon-192.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;800&family=Reem+Kufi:wght@400;500;600;700&display=swap" rel="stylesheet">
 <title>مقايضة</title>
 <style>
 :root{--p:#0b6b5d;--p2:#12997f;--pt:#0b6b5d;--g:#e0a526;--bg:#f3f5f7;--cd:#fff;--tx:#0f172a;--mu:#64748b;--bd:#e4e9ee;--sh:0 8px 24px rgba(15,23,42,.08);--hh:58px;--soft:#e7f4f0;--ok:#16a34a;--no:#dc2626}
@@ -135,9 +135,31 @@ nav .fab svg{width:28px;height:28px}
 .rrow{display:flex;gap:10px;align-items:center;margin:8px 0;padding:8px;background:var(--soft);border-radius:12px;font-size:13.5px}.rrow img{width:46px;height:46px;border-radius:10px;object-fit:cover}
 #toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 18px;border-radius:24px;font-size:14px;font-weight:600;display:none;z-index:60;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;align-items:center;justify-content:center;padding:10px}
+#splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff;background:radial-gradient(120% 90% at 50% 25%,#14594d 0%,#0a3a32 55%,#03171a 100%);transition:opacity .5s,visibility .5s}
+#splash.out{opacity:0;visibility:hidden}
+#splash .art{width:min(78vw,320px);height:auto;filter:drop-shadow(0 16px 30px rgba(0,0,0,.45))}
+#splash .c1{animation:fl 3.2s ease-in-out infinite}#splash .c2{animation:fl 3.2s ease-in-out -1.6s infinite}
+#splash .ar{transform-origin:160px 120px;animation:sp 3.2s ease-in-out infinite}
+@keyframes fl{0%,100%{transform:translateY(0)}50%{transform:translateY(-8px)}}
+@keyframes sp{0%,100%{transform:rotate(0)}50%{transform:rotate(180deg)}}
+#splash h1,#splash p{font-family:"Reem Kufi",Cairo,sans-serif}
+#splash h1{font-size:46px;margin:22px 0 6px;font-weight:700;letter-spacing:0;background:linear-gradient(180deg,#fff0b3,#e2b043);-webkit-background-clip:text;background-clip:text;color:transparent}
+#splash p{margin:4px 0;font-size:20px;font-weight:500;line-height:1.7}
+#splash p.s{font-size:15px;opacity:.75;font-weight:400}
+#splash .bar{width:120px;height:4px;border-radius:4px;background:rgba(255,255,255,.18);margin-top:30px;overflow:hidden}
+#splash .bar i{display:block;height:100%;width:0;background:linear-gradient(90deg,#fff0b3,#e2b043);animation:ld 2.4s ease-out forwards}
+@keyframes ld{to{width:100%}}
 </style>
 </head>
 <body>
+<div id="splash"><svg class="art" viewBox="0 0 320 240" fill="none">
+<ellipse cx="160" cy="215" rx="110" ry="12" fill="#000" opacity=".25"/>
+<g class="c1"><g transform="rotate(-8 80 120)"><rect x="22" y="62" width="112" height="112" rx="24" fill="#fff" fill-opacity=".97"/><rect x="22" y="62" width="112" height="112" rx="24" stroke="#e2b043" stroke-width="3"/><path d="M48 98 L68 84 Q78 96 88 84 L108 98 L120 118 L104 126 L104 154 H52 V126 L36 118 Z" fill="#0f766e" stroke="#0a3a32" stroke-width="3" stroke-linejoin="round"/></g></g>
+<g class="c2"><g transform="rotate(8 240 120)"><rect x="186" y="62" width="112" height="112" rx="24" fill="#fff" fill-opacity=".97"/><rect x="186" y="62" width="112" height="112" rx="24" stroke="#e2b043" stroke-width="3"/><path d="M214 128 A28 28 0 0 1 270 128" stroke="#0f766e" stroke-width="8" stroke-linecap="round"/><rect x="206" y="122" width="17" height="32" rx="8" fill="#e2b043" stroke="#0a3a32" stroke-width="3"/><rect x="261" y="122" width="17" height="32" rx="8" fill="#e2b043" stroke="#0a3a32" stroke-width="3"/></g></g>
+<g class="ar"><circle cx="160" cy="120" r="30" fill="#0a3a32" stroke="#e2b043" stroke-width="4"/>
+<path d="M146 113h26m-7-7 7 7-7 7M174 127h-26m7-7-7 7 7 7" stroke="#ffd566" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/></g>
+</svg><h1>مقايضة</h1><p>بدّل اللي مش محتاجه بحاجة محتاجها</p><p class="s">من غير فلوس.. ومن غير تعقيد</p><div class="bar"><i></i></div></div>
+
 <header id="hd" style="display:none"><button class="ib" id="mb"></button><div class="ttl" id="ht">مقايضة</div><div class="logo" id="lg"></div></header>
 <main id="view"></main>
 <nav id="nav" style="display:none"></nav>
@@ -161,7 +183,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v6.3";
+const VERSION="v6.5";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -653,5 +675,6 @@ function aboutView(){
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
 </script>
+<script>(function(){var e=document.getElementById("splash");if(!e)return;var d=function(){e.classList.add("out");setTimeout(function(){e.remove()},600)};setTimeout(d,2600);e.onclick=d})();</script>
 </body>
 </html>
