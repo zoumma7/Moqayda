@@ -153,6 +153,7 @@ nav .fab svg{width:28px;height:28px}
 .wchips{display:flex;flex-wrap:wrap;gap:8px}.wch{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pt);padding:6px 6px 6px 12px;border-radius:20px;font-weight:700;font-size:13.5px}.wch button{border:0;background:rgba(0,0,0,.12);color:inherit;width:20px;height:20px;border-radius:50%;line-height:18px;cursor:pointer;padding:0}
 .vf{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(180deg,#ffd566,#e0a526);color:#4a3200;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-inline-start:4px}
 .featc{border:2px solid #e0a526;box-shadow:0 6px 20px rgba(224,165,38,.28)}.fbd{position:absolute;bottom:8px;right:8px;z-index:2;background:linear-gradient(180deg,#ffd566,#e0a526);color:#4a3200;font-weight:800;font-size:11.5px;padding:3px 10px;border-radius:10px}
+.legal h3{margin:16px 0 6px;color:var(--pt)}.legal p,.legal li{line-height:1.9;font-size:14px}.legal ul{padding:0 18px 0 0;margin:4px 0}
 </style>
 </head>
 <body>
@@ -173,8 +174,8 @@ nav .fab svg{width:28px;height:28px}
 <div id="ov"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
-import {getFirestore,collection,addDoc,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,query,where,orderBy,limit,onSnapshot,serverTimestamp,increment,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,deleteUser,reauthenticateWithPopup} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getFirestore,collection,addDoc,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,query,where,orderBy,limit,startAfter,onSnapshot,serverTimestamp,increment,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyCT5Fz2LUVXfXxVz8tiEPVkMZ4YVLielwM",
@@ -187,7 +188,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.3";
+const VERSION="v7.4";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -426,7 +427,7 @@ function findMatches(all){
     if(mutual)perfect.push({x,m:mutual});else if(wishHit)wish.push(x);}
   perfect.sort((a,b)=>isFeat(b.x)-isFeat(a.x));wish.sort((a,b)=>isFeat(b)-isFeat(a));matchCount=perfect.length+wish.length;return {perfect,wish};
 }
-async function loadAllOffers(){const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(200)));return s.docs.map(d=>({id:d.id,...d.data()}));}
+async function loadAllOffers(){const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(100)));return s.docs.map(d=>({id:d.id,...d.data()}));}
 async function saveWants(w){prof.wants=w;try{await updateDoc(doc(db,"users",me.uid),{wants:w});}catch(e){toast("فشل الحفظ: "+(e.code||e.message));}}
 async function matchesView(){
   view.innerHTML=loader;let all=[];try{all=await loadAllOffers();}catch(e){toast("خطأ: "+(e.code||e.message));}
@@ -479,6 +480,26 @@ async function featureSheet(o){
     catch(e){$("#fs").disabled=false;toast("فشل الإرسال: "+(e.code||e.message));}};
 }
 
+/* legal + delete account */
+const LEGAL_UPDATED="22 نوفمبر 2026";
+const PRIV_HTML="<h3>1. البيانات اللي بنجمعها</h3>\n<ul><li><b>من حساب جوجل عند الدخول:</b> الاسم والبريد الإلكتروني والصورة، من خلال خدمة Firebase Authentication.</li>\n<li><b>اللي بتدخله بنفسك:</b> الاسم المعروض والصورة الشخصية والمحافظة والمدينة ونبذة قصيرة (اختيارية).</li>\n<li><b>المحتوى:</b> عروضك (العنوان والوصف والصور والقيمة التقريبية)، والرسائل والوسائط داخل المحادثات، وطلبات المقايضة، والتقييمات، والبلاغات، وقوائم المفضلة و«أنا دايّر على…» وقائمة الحظر.</li>\n<li><b>على جهازك:</b> تفضيلات بسيطة مثل الوضع الليلي وآخر وقت اطّلعت فيه على الإشعارات.</li></ul>\n<h3>2. ليه بنستخدمها</h3>\n<p>لتشغيل التطبيق: عرض عروضك للمستخدمين الآخرين، والتواصل بين الأطراف، والمطابقة بين العروض، والإشعارات، وحماية المستخدمين ومنع الإساءة، ومعالجة طلبات تمييز العروض.</p>\n<h3>3. مين يشوف إيه</h3>\n<ul><li>اسمك وصورتك ومحافظتك وعروضك وتقييماتك ظاهرة للمستخدمين المسجّلين في التطبيق.</li>\n<li>بريدك الإلكتروني <b>مش بيظهر</b> لأي مستخدم آخر.</li>\n<li>رسائل المحادثة بيشوفها طرفا المحادثة فقط.</li>\n<li>فريق الإدارة بيراجع البلاغات والعروض المبلَّغ عنها وطلبات التمييز.</li></ul>\n<h3>4. التخزين والأمان</h3>\n<p>بياناتك بتتخزّن على خدمات Google Firebase (قاعدة بيانات Firestore ونظام الدخول) وبتتحمي بقواعد وصول تمنع أي مستخدم من الوصول لبيانات غيره. بنقدر نستخدم خدمة تخزين وسائط لرفع الفيديوهات لو اتفعّلت. <b>مش بنبيع بياناتك</b> ومفيش إعلانات أو أدوات تتبّع تابعة لأطراف أخرى.</p>\n<h3>5. حقوقك</h3>\n<ul><li>تقدر تعدّل بياناتك في أي وقت من «تعديل ملفي».</li>\n<li>تقدر تحذف حسابك نهائياً من <b>حسابي ← حذف حسابي</b>. بيتم حذف ملفك الشخصي وكل عروضك وحساب الدخول.</li>\n<li>بعد الحذف ممكن تفضل الرسائل اللي بعتّها ظاهرة للطرف التاني باسم «مستخدم محذوف»، وممكن تحتفظ الإدارة بالتقييمات والبلاغات لأغراض الأمان.</li></ul>\n<h3>6. الأعمار</h3>\n<p>التطبيق مخصص لمن بلغوا 18 سنة فأكثر.</p>\n<h3>7. التعديلات</h3>\n<p>ممكن نحدّث السياسة دي من وقت للتاني، وهنوضّح تاريخ آخر تحديث في أولها.</p>";
+const TERMS_HTML="<h3>1. طبيعة الخدمة</h3>\n<p>«مقايضة» منصة للتعارف بين الناس لتبادل الحاجات. المقايضة والتسليم وأي فرق مالي بتتم بين الطرفين مباشرة، والتطبيق <b>مش طرف فيها ومش ضامن</b> لأي صفقة أو لجودة أي غرض.</p>\n<h3>2. المحتوى الممنوع</h3>\n<ul><li>المخدرات والأسلحة والمسروقات والمنتجات المقلّدة أو غير القانونية.</li>\n<li>الأدوية بوصفة طبية والحيوانات المحمية.</li>\n<li>أي محتوى مسيء أو غير لائق أو مضلل أو احتيالي.</li>\n<li>انتحال شخصية الغير أو استخدام صور مش بتاعتك.</li></ul>\n<h3>3. مسؤوليتك</h3>\n<p>انت المسؤول عن صحة بياناتك ومحتوى عروضك، وعن أي اتفاق بتعمله. اتبع <b>نصائح الأمان</b> في التطبيق: قابل الطرف التاني في مكان عام، وافحص الغرض كويس قبل التبادل، ومتحوّلش فلوس مقدماً لحد متعرفوش.</p>\n<h3>4. صلاحيات الإدارة</h3>\n<p>للإدارة الحق في حذف أي عرض مخالف أو حظر أي حساب مخالف دون إشعار مسبق.</p>\n<h3>5. العروض المميزة</h3>\n<p>التمييز خدمة مدفوعة بتزوّد ظهور عرضك في أول الصفحة للمدة المحددة، ولا تضمن حدوث مقايضة. الدفع بيتم يدوياً ويتفعّل التمييز بعد المراجعة، والمبلغ غير مسترد بعد التفعيل إلا لو حصل خطأ من جانبنا.</p>\n<h3>6. إخلاء المسؤولية</h3>\n<p>التطبيق بيتقدّم «كما هو» ومن غير ضمان لاستمرار الخدمة أو خلوّها من الأخطاء، وممكن نعدّل أو نوقف أي جزء منه.</p>\n<h3>7. التعديلات</h3>\n<p>استمرارك في استخدام التطبيق بعد أي تحديث للشروط معناه موافقتك عليها.</p>";
+function legalView(title,html){view.innerHTML=`<div class="card pad legal"><h2 style="margin:0 0 4px">${title}</h2><div class="mu sm" style="margin-bottom:10px">آخر تحديث: ${LEGAL_UPDATED}</div>${html}</div>`;}
+async function deleteAccount(){
+  if(!await confirmSheet("هتحذف حسابك نهائياً؟ بياناتك وكل عروضك هتتمسح ومينفعش ترجّعها.","متابعة",true))return;
+  try{await reauthenticateWithPopup(auth.currentUser,new GoogleAuthProvider());}catch(e){return toast("لازم تأكّد دخولك بجوجل عشان تحذف الحساب");}
+  if(!await confirmSheet("تأكيد أخير: حذف حسابك وعروضك نهائياً؟","حذف نهائي",true))return;
+  const uid=me.uid;toast("جاري حذف حسابك...");
+  try{
+    const os=await getDocs(query(collection(db,"offers"),where("ownerUid","==",uid)));for(const d of os.docs)await deleteDoc(doc(db,"offers",d.id));
+    const cs=await getDocs(query(collection(db,"chats"),where("participants","array-contains",uid)));
+    for(const d of cs.docs)await updateDoc(doc(db,"chats",d.id),{["names."+uid]:"مستخدم محذوف",["photos."+uid]:""}).catch(()=>{});
+    await deleteDoc(doc(db,"users",uid));
+    await deleteUser(auth.currentUser);
+    toast("تم حذف حسابك");
+  }catch(e){toast("فشل الحذف: "+(e.code||e.message));}
+}
+
 /* nav */
 $("#nav").innerHTML=[["home","home","الرئيسية"],["favs","heart","المفضلة"],["add","plus",""],["chats","chat","الرسائل"],["me","user","حسابي"]].map(([v,i,t])=>
   v==="add"?`<button class="fab" data-v="add" aria-label="أضف عرض">${ic("plus")}</button>`:`<button data-v="${v}">${ic(i)}<span>${t}</span>${v==="chats"?'<i class="dot" id="bd"></i>':""}</button>`).join("");
@@ -489,10 +510,10 @@ $("#nb").innerHTML=ic("bell")+'<i class="dot" id="nbd" style="top:-5px;left:-5px
 /* router */
 const V={home:{t:"مقايضة",tab:1},favs:{t:"المفضلة",tab:1},chats:{t:"الرسائل",tab:1},me:{t:"حسابي",tab:1},
   add:{t:"عرض جديد",nonav:1},edit:{t:"تعديل العرض",nonav:1},offer:{t:"تفاصيل العرض"},mine:{t:"عروضي"},swapped:{t:"تمت مقايضتها"},
-  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},admin:{t:"لوحة الإدارة"},notifs:{t:"الإشعارات"},props:{t:"طلبات المقايضة"},matches:{t:"مقايضات مناسبة"}};
+  chat:{t:"المحادثة",nonav:1},user:{t:"الملف الشخصي"},editprofile:{t:"تعديل ملفي",nonav:1},setup:{t:"أهلاً بيك 👋",nonav:1,nomenu:1},safety:{t:"نصائح الأمان"},about:{t:"عن التطبيق"},privacy:{t:"سياسة الخصوصية"},terms:{t:"شروط الاستخدام"},admin:{t:"لوحة الإدارة"},notifs:{t:"الإشعارات"},props:{t:"طلبات المقايضة"},matches:{t:"مقايضات مناسبة"}};
 const VIEWS={home:()=>homeView(),favs:()=>favsView(),chats:()=>chatsView(),me:()=>meView(),add:()=>offerForm(),edit:a=>offerForm(a),
   offer:a=>offerView(a),mine:a=>mineView(a),swapped:()=>mineView("done"),chat:a=>chatView(a),user:a=>userView(a),
-  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),admin:a=>adminView(a),notifs:()=>{nvSeen=getSeen();notifView();},props:a=>propsView(a||"in"),matches:()=>matchesView()};
+  editprofile:()=>profileForm(false),setup:()=>profileForm(true),safety:()=>safetyView(),about:()=>aboutView(),privacy:()=>legalView("سياسة الخصوصية",PRIV_HTML),terms:()=>legalView("شروط الاستخدام",TERMS_HTML),admin:a=>adminView(a),notifs:()=>{nvSeen=getSeen();notifView();},props:a=>propsView(a||"in"),matches:()=>matchesView()};
 function go(v,arg,mode){
   const cfg=V[v];stopChat();closeDrawer();closeSheet();
   const st={v,arg,d:cfg.tab?0:(mode==="replace"?depth:depth+1)};
@@ -595,26 +616,31 @@ function bindCards(box,onChange){box.onclick=async e=>{const c=e.target.closest(
   go("offer",c.dataset.id);};}
 
 /* home */
+const PAGE=40;let homeCursor=null,homeMore=false;
+async function loadMore(){const b=$("#lm");if(b){b.disabled=true;b.textContent="جاري التحميل..."}
+  try{const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),startAfter(homeCursor),limit(PAGE)));
+    const ids=new Set(allOffers.map(o=>o.id));allOffers=allOffers.concat(s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>!ids.has(o.id)));homeCursor=s.docs[s.docs.length-1]||homeCursor;homeMore=s.docs.length>=PAGE;}
+  catch(e){toast("خطأ: "+(e.code||e.message));}renderList();matchBanner();}
 async function homeView(){
   view.innerHTML=`<div class="hero"><div class="hi">أهلاً ${esc(first(prof.name))} 👋</div><div class="sub">إيه اللي عندك وعاوز تبدّله النهاردة؟</div></div>
   <div id="mbn"></div><div class="sr">${ic("search")}<input id="q" placeholder="ابحث عن أي حاجة..." value="${esc(fq)}"></div>
   <div class="chips" id="chips"><button class="chip ${fc?"":"on"}" data-c="">الكل</button>${CATS.map(c=>`<button class="chip ${fc===c[0]?"on":""}" data-c="${c[0]}">${c[1]} ${c[0]}</button>`).join("")}</div>
   <div class="row2" style="margin-bottom:12px"><select id="fg">${opts(GOVS,"كل المحافظات",fg)}</select><button class="btn sec sm" id="mg">${ic("pin")} محافظتي</button><button class="btn sec sm" id="rf" aria-label="تحديث">${ic("refresh")}</button></div>
-  <div class="grid" id="list">${'<div class="card sk"></div>'.repeat(4)}</div>`;
+  <div class="grid" id="list">${'<div class="card sk"></div>'.repeat(4)}</div><div id="lmw" style="margin:14px 0"></div>`;
   $("#q").oninput=e=>{fq=e.target.value;renderList();};
   $("#fg").onchange=e=>{fg=e.target.value;renderList();};
   $("#mg").onclick=()=>{fg=prof.gov||"";$("#fg").value=fg;renderList();};
   $("#rf").onclick=()=>homeView();
   $("#chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;fc=b.dataset.c;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===b));renderList();};
   bindCards($("#list"));
-  try{const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(150)));allOffers=s.docs.map(d=>({id:d.id,...d.data()}));}
+  try{const s=await getDocs(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(PAGE)));allOffers=s.docs.map(d=>({id:d.id,...d.data()}));homeCursor=s.docs[s.docs.length-1]||null;homeMore=s.docs.length>=PAGE;}
   catch(e){allOffers=[];toast("خطأ في التحميل: "+(e.code||e.message));}
   matchBanner();
   if(curView==="home")renderList();
 }
 function renderList(){const q=fq.trim().toLowerCase();
   const r=allOffers.filter(o=>o.status!=="done"&&o.status!=="hidden"&&!isBlk(o.ownerUid)&&(!fc||o.cat===fc)&&(!fg||o.gov===fg)&&(!q||[o.title,o.desc,o.want,o.city].join(" ").toLowerCase().includes(q)));
-  r.sort((a,b)=>isFeat(b)-isFeat(a));const l=$("#list");if(!l)return;l.innerHTML=r.length?r.map(o=>cardHTML(o)).join(""):emptyBox("search","مفيش عروض مطابقة","جرّب تغيّر البحث أو الفلتر، أو كن أول من يضيف عرض!");}
+  r.sort((a,b)=>isFeat(b)-isFeat(a));const l=$("#list");if(!l)return;const lw=$("#lmw");if(lw){lw.innerHTML=homeMore?`<button class="btn sec" id="lm">عرض المزيد</button>`:"";if($("#lm"))$("#lm").onclick=loadMore;}l.innerHTML=r.length?r.map(o=>cardHTML(o)).join(""):emptyBox("search","مفيش عروض مطابقة","جرّب تغيّر البحث أو الفلتر، أو كن أول من يضيف عرض!");}
 
 /* favorites */
 async function favsView(){
@@ -781,9 +807,9 @@ async function meView(){
   <div class="sg"><button data-g="mine">${ic("box")}عروضي</button><button data-g="swapped">${ic("check")}تمت مقايضتها</button><button data-g="favs">${ic("heart")}المفضلة</button><button data-g="chats">${ic("chat")}الرسائل</button></div>
   <div class="card"><button class="mi" id="th">${ic("moon")}<span>الوضع الليلي</span><span class="sw ${isDark()?"on":""}"></span></button>${isAdm?`<button class="mi" data-g="admin">${ic("flag")}<span>لوحة الإدارة</span></button>`:""}<button class="mi" data-g="safety">${ic("shield")}<span>نصائح الأمان</span></button>
   <button class="mi" id="sa">${ic("share")}<span>شارك التطبيق</span></button><button class="mi" data-g="about">${ic("info")}<span>عن التطبيق</span></button>
-  <button class="mi" id="lo" style="color:var(--no)">${ic("logout")}<span>تسجيل الخروج</span></button></div>`;
+  <button class="mi" id="lo" style="color:var(--no)">${ic("logout")}<span>تسجيل الخروج</span></button><button class="mi" id="da" style="color:var(--no)">${ic("trash")}<span>حذف حسابي</span></button></div>`;
   view.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>go(b.dataset.g));
-  $("#ep").onclick=()=>go("editprofile");$("#th").onclick=()=>{applyTheme(isDark()?"light":"dark");$("#th .sw").classList.toggle("on",isDark());};$("#sa").onclick=shareApp;$("#lo").onclick=logout;
+  $("#da").onclick=deleteAccount;$("#ep").onclick=()=>go("editprofile");$("#th").onclick=()=>{applyTheme(isDark()?"light":"dark");$("#th .sw").classList.toggle("on",isDark());};$("#sa").onclick=shareApp;$("#lo").onclick=logout;
 }
 async function userView(uid){
   if(uid===me.uid)return go("me",null,"replace");
@@ -885,7 +911,8 @@ function safetyView(){
 function aboutView(){
   view.innerHTML=`<div class="card pad ctr"><div class="logo" style="width:84px;height:84px;border-radius:26px;margin:0 auto 12px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff"><svg class="i" style="width:46px;height:46px" viewBox="0 0 24 24">${IC.swap}</svg></div>
   <h2>مقايضة</h2><div class="mu">الإصدار ${VERSION}</div><p style="line-height:1.9">منصة بسيطة وآمنة للمقايضة. اعرض اللي مش محتاجه، واتفق مع الناس على اللي محتاجه، من غير فلوس.</p>
-  <button class="btn sec" id="sa">${ic("share")} شارك التطبيق مع أصحابك</button></div>`;$("#sa").onclick=shareApp;
+  <button class="btn sec" id="sa">${ic("share")} شارك التطبيق مع أصحابك</button>
+  <div class="row2" style="margin-top:10px"><button class="btn sec sm" data-g="privacy">سياسة الخصوصية</button><button class="btn sec sm" data-g="terms">شروط الاستخدام</button></div></div>`;$("#sa").onclick=shareApp;view.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>go(b.dataset.g));
 }
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
