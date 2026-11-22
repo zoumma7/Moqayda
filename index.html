@@ -151,6 +151,7 @@ nav .fab svg{width:28px;height:28px}
 @keyframes ld{to{width:100%}}
 .swp{display:flex;align-items:center;gap:8px;margin:12px 0}.swp>div{flex:1;min-width:0;text-align:center}.swp img,.swp .ph{width:76px;height:76px;border-radius:16px;object-fit:cover;margin:0 auto 6px;display:grid;place-items:center;background:var(--soft);font-size:30px}.swp small{display:block;color:var(--mu);font-size:11.5px}.swp b{display:block;font-size:13px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.ar2{flex:none!important;width:34px!important;height:34px;border-radius:50%;background:var(--g);color:#fff;display:grid;place-items:center}.ar2 svg{width:18px;height:18px}
 .wchips{display:flex;flex-wrap:wrap;gap:8px}.wch{display:inline-flex;align-items:center;gap:6px;background:var(--soft);color:var(--pt);padding:6px 6px 6px 12px;border-radius:20px;font-weight:700;font-size:13.5px}.wch button{border:0;background:rgba(0,0,0,.12);color:inherit;width:20px;height:20px;border-radius:50%;line-height:18px;cursor:pointer;padding:0}
+.vf{display:inline-flex;align-items:center;gap:3px;background:linear-gradient(180deg,#ffd566,#e0a526);color:#4a3200;font-size:11px;font-weight:800;padding:2px 8px;border-radius:10px;vertical-align:middle;margin-inline-start:4px}
 </style>
 </head>
 <body>
@@ -185,7 +186,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.1";
+const VERSION="v7.2";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -308,7 +309,7 @@ function watchOffers(){
   if(!getSeen())setSeen(Math.floor(Date.now()/1000));
   unsubOff=onSnapshot(query(collection(db,"offers"),orderBy("createdAt","desc"),limit(30)),s=>{
     const prev=new Set(notifOffers.map(o=>o.id));
-    notifOffers=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>o.ownerUid!==me.uid&&(o.status||"open")==="open");
+    notifOffers=s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>o.ownerUid!==me.uid&&(o.status||"open")==="open"&&!isBlk(o.ownerUid));
     if(!offFirst){const fresh=notifOffers.filter(o=>!prev.has(o.id)&&offSec(o)>getSeen());
       if(fresh.length&&curView!=="notifs"){const hit=fresh.find(o=>(prof?.wants||[]).some(w=>wmatch(w,o)));toast(hit?"🎯 عرض بيناسب اللي بتدور عليه: "+hit.title:"🆕 عرض جديد: "+fresh[0].title);pushLocal(hit||fresh[0]);}}
     offFirst=false;setNb();if(curView==="notifs")notifView();},()=>{});}
@@ -326,7 +327,7 @@ function notifView(){
 /* proposals */
 let unsubPropIn=null,unsubPropOut=null,propIn=new Map(),propOut=new Map(),propFirst=0,curPropTab="in",applying=new Set();
 const allProps=()=>[...propIn.values(),...propOut.values()].sort((a,b)=>(b.at?.seconds||9e9)-(a.at?.seconds||9e9));
-const pendingIn=()=>[...propIn.values()].filter(p=>p.status==="pending");
+const pendingIn=()=>[...propIn.values()].filter(p=>p.status==="pending"&&!isBlk(p.fromUid));
 const thumbOf=async u=>{try{const sr=safeImg(u);if(!sr)return "";const i=await new Promise((res,rej)=>{const im=new Image();im.onload=()=>res(im);im.onerror=rej;im.src=sr;});
   const k=Math.min(1,110/Math.max(i.width,i.height)),c=document.createElement("canvas");c.width=Math.round(i.width*k)||1;c.height=Math.round(i.height*k)||1;c.getContext("2d").drawImage(i,0,0,c.width,c.height);return c.toDataURL("image/jpeg",.6);}catch{return "";}};
 async function applyAccepted(p){if(applying.has(p.id))return;applying.add(p.id);
@@ -347,19 +348,27 @@ function watchProps(){
       if(o&&o.status==="pending"&&p.status==="declined")toast("طلبك على «"+p.toTitle+"» اترفض");
       if(p.status==="accepted"&&!p.applied)applyAccepted(p);}
     propOut=nm;refresh();},()=>{});}
+const fmtM=n=>(+n).toLocaleString("ar-EG");
+function diffText(m,o){const a=+m.value||0,b=+o.value||0;
+  if(!a||!b)return o.cash||m.cash?"ممكن تتفقوا على فرق فلوس لو القيمتين مختلفين.":"";
+  const d=b-a,mx=Math.max(a,b);if(Math.abs(d)<=mx*.08)return "القيمتين متقاربين ✅ (≈ "+fmtM(a)+" و ≈ "+fmtM(b)+" جنيه)";
+  const ok=(d>0?m.cash:o.cash)?"":" (مش واضح إن الطرف التاني يقبل فرق فلوس)";
+  return d>0?"عرضه أغلى بحوالي "+fmtM(d)+" جنيه، يعني ممكن تضيف الفرق ده"+ok:"عرضك أغلى بحوالي "+fmtM(-d)+" جنيه، ممكن تطلب الفرق ده"+ok;}
 async function proposeSheet(o,owner,preId){
   let mine=[];try{const s=await getDocs(query(collection(db,"offers"),where("ownerUid","==",me.uid)));mine=s.docs.map(d=>({id:d.id,...d.data()})).filter(x=>(x.status||"open")==="open");}catch{}
   if(!mine.length){sheet(`<h3>مفيش عروض متاحة عندك</h3><p class="mu">لازم تضيف عرض الأول عشان تقدر تقترح بيه مقايضة.</p><button class="btn" id="ad">${ic("plus")} أضف عرض</button>`);$("#ad").onclick=()=>go("add");return;}
   const th=x=>{const u=safeImg(x.photos?.[0]||x.photo);return u?`<img src="${esc(u)}" alt="" style="width:40px;height:40px;border-radius:10px;object-fit:cover">`:`<span style="font-size:22px">📦</span>`;};
   sheet(`<h3>اعرض مقايضة</h3><p class="mu sm" style="margin:0 0 8px">اختار اللي هتقايضه بـ «${esc(o.title)}»</p>
   <div style="max-height:36vh;overflow:auto">${mine.map((x,i)=>`<label class="opt"><input type="radio" name="mo" value="${i}" ${(preId?x.id===preId:i===0)?"checked":""}>${th(x)}<b>${esc(x.title)}</b></label>`).join("")}</div>
-  <div class="fld"><textarea id="pn" maxlength="200" placeholder="رسالة لصاحب العرض (اختياري)"></textarea></div><button class="btn gold" id="ps">${ic("send")} إرسال الطلب</button>`);
-  $("#ps").onclick=async()=>{const m=mine[+document.querySelector("input[name=mo]:checked").value];
+  <div id="df" class="mu sm" style="margin:8px 2px;min-height:18px"></div><div class="fld"><textarea id="pn" maxlength="200" placeholder="رسالة لصاحب العرض (اختياري)"></textarea></div><button class="btn gold" id="ps">${ic("send")} إرسال الطلب</button>`);
+  const cur=()=>mine[+document.querySelector("input[name=mo]:checked").value],upd=()=>{const t=diffText(cur(),o);$("#df").textContent=t?"💰 "+t:"";};
+  document.querySelectorAll("input[name=mo]").forEach(r=>r.onchange=upd);upd();
+  $("#ps").onclick=async()=>{const m=cur();
     if(allProps().some(p=>p.fromUid===me.uid&&p.status==="pending"&&p.toOfferId===o.id&&p.myOfferId===m.id))return toast("بعتّ الطلب ده قبل كده");
     $("#ps").disabled=true;
     try{const [ti,mi]=await Promise.all([thumbOf(o.photos?.[0]||o.photo),thumbOf(m.photos?.[0]||m.photo)]);
       await addDoc(collection(db,"proposals"),{fromUid:me.uid,fromName:prof.name,fromPhoto:prof.photo||"",toUid:o.ownerUid,toName:owner?.name||o.ownerName||"مستخدم",
-        toOfferId:o.id,toTitle:o.title,toImg:ti,myOfferId:m.id,myTitle:m.title,myImg:mi,note:$("#pn").value.trim(),status:"pending",at:serverTimestamp()});
+        toOfferId:o.id,toTitle:o.title,toImg:ti,myOfferId:m.id,myTitle:m.title,myImg:mi,note:$("#pn").value.trim(),diff:diffText(m,o),status:"pending",at:serverTimestamp()});
       closeSheet();toast("اتبعت طلب المقايضة ✅");}catch(e){$("#ps").disabled=false;toast("فشل الإرسال: "+(e.code||e.message));}};
 }
 async function acceptProp(p){
@@ -375,12 +384,12 @@ async function acceptProp(p){
 const ST={pending:["في الانتظار","#b45309"],accepted:["تم القبول ✅","#16a34a"],declined:["اترفض","#dc2626"],cancelled:["اتلغى","#64748b"]};
 function propsView(tab){
   curPropTab=tab||curPropTab||"in";const t=curPropTab,all=allProps();
-  const inn=all.filter(p=>p.toUid===me.uid),out=all.filter(p=>p.fromUid===me.uid),list=t==="in"?inn:out;
+  const inn=all.filter(p=>p.toUid===me.uid&&!isBlk(p.fromUid)),out=all.filter(p=>p.fromUid===me.uid),list=t==="in"?inn:out;
   const img=u=>safeImg(u)?`<img src="${esc(safeImg(u))}" alt="">`:`<div class="ph">📦</div>`;
   const card=p=>{const inc=t==="in",st=ST[p.status]||ST.pending;
     return `<div class="card pad prc" style="margin-bottom:12px"><div style="display:flex;justify-content:space-between;align-items:center"><b>${inc?"من "+esc(p.fromName||"مستخدم"):"إلى "+esc(p.toName||"مستخدم")}</b><span class="tag" style="background:${st[1]};color:#fff;padding:2px 10px;border-radius:10px;font-size:11.5px">${st[0]}</span></div>
     <div class="swp"><div>${img(inc?p.myImg:p.myImg)}<small>${inc?"عرضه":"عرضك"}</small><b>${esc(p.myTitle)}</b></div><span class="ar2">${ic("swap")}</span><div>${img(p.toImg)}<small>${inc?"عرضك":"عرضه"}</small><b>${esc(p.toTitle)}</b></div></div>
-    ${p.note?`<p class="mu" style="margin:8px 0">“${esc(p.note)}”</p>`:""}<div class="mu sm">${ago(p.at)}</div>
+    ${p.note?`<p class="mu" style="margin:8px 0">“${esc(p.note)}”</p>`:""}${p.diff?`<div class="mu sm" style="margin:6px 0">💰 ${esc(p.diff)}</div>`:""}<div class="mu sm">${ago(p.at)}</div>
     <div class="acts">${inc&&p.status==="pending"?`<button class="btn sm" data-a="acc" data-id="${p.id}">قبول</button><button class="btn sec sm" data-a="dec" data-id="${p.id}">رفض</button>`:""}
     ${!inc&&p.status==="pending"?`<button class="btn sec sm" data-a="can" data-id="${p.id}">إلغاء الطلب</button>`:""}
     ${p.status==="accepted"?`<button class="btn sec sm" data-a="rate" data-id="${p.id}">${ic("star")} قيّم</button>`:""}
@@ -400,6 +409,7 @@ function propsView(tab){
 }
 
 /* smart matching */
+const isBlk=u=>!!(prof&&(prof.blocked||[]).includes(u));
 const norm=t=>String(t||"").toLowerCase().replace(/[\u064B-\u0652\u0640]/g,"").replace(/[أإآ]/g,"ا").replace(/ة/g,"ه").replace(/ى/g,"ي").replace(/[^\p{L}\p{N}\s]/gu," ");
 const STOP=new Set(["او","اي","ان","في","من","علي","الي","مع","ده","دي","بس","كل","حاجه","نفس","القيمه","قيمه","مستعمل","جديد","عاوز","عايز","ابدل","بدل","مقابل","حاله","ممتازه","شغال","جيد"].map(norm));
 const toks=t=>norm(t).split(/\s+/).map(w=>w.replace(/^(وال|بال|ال)/,"")).filter(w=>w.length>=3&&!STOP.has(w));
@@ -407,7 +417,7 @@ const wmatch=(want,o)=>{const ts=toks(want);if(!ts.length)return false;const hw=
   return ts.some(t=>hw.some(h=>h===t||(t.length>=4&&h.startsWith(t))||(h.length>=4&&t.startsWith(h))));};
 let matchCount=0;
 function findMatches(all){
-  const open=o=>(o.status||"open")==="open",my=all.filter(o=>o.ownerUid===me.uid&&open(o)),others=all.filter(o=>o.ownerUid!==me.uid&&open(o)),wants=prof.wants||[];
+  const open=o=>(o.status||"open")==="open",my=all.filter(o=>o.ownerUid===me.uid&&open(o)),others=all.filter(o=>o.ownerUid!==me.uid&&open(o)&&!isBlk(o.ownerUid)),wants=prof.wants||[];
   const perfect=[],wish=[];
   for(const x of others){
     const wishHit=wants.some(w=>wmatch(w,x)),xWants=my.filter(m=>wmatch(x.want,m));
@@ -487,6 +497,7 @@ function loginView(){
   <button class="gbtn" id="g">${googleSVG}<span>الدخول بحساب جوجل</span></button></div></div>`;
   $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){toast("تعذر الدخول: "+(e.code||e.message));}};
 }
+let DEEP=null;try{DEEP=new URLSearchParams(location.search).get("o");}catch{}
 onAuthStateChanged(auth,async u=>{
   me=u;prof=null;isAdm=false;pendingReports=0;watchUnread();watchOffers();watchProps();
   if(!u){loginView();return;}
@@ -494,7 +505,7 @@ onAuthStateChanged(auth,async u=>{
   try{const s=await getDoc(doc(db,"users",u.uid));prof=s.exists()?s.data():null;}catch(e){toast("خطأ في التحميل: "+(e.code||e.message));}
   try{isAdm=(await getDoc(doc(db,"admins",u.uid))).exists();adminDbg=isAdm?"أدمن ✅":"مفيش مستند باسم الـ UID ده في admins";}catch(e){isAdm=false;adminDbg="خطأ: "+(e.code||e.message);}
   if(prof&&prof.banned){bannedView();return;}
-  (!prof||!prof.complete)?go("setup",null,"replace"):go("home",null,"replace");
+  (!prof||!prof.complete)?go("setup",null,"replace"):(go("home",null,"replace"),(()=>{const d=DEEP;DEEP=null;if(d){try{history.replaceState(history.state,"",location.pathname);}catch{}go("offer",d);}})());
 });
 function bannedView(){document.body.className="nonav";$("#hd").style.display="none";$("#nav").style.display="none";
   view.innerHTML=`<div class="card pad ctr" style="margin-top:60px">${ic("shield")}<h2>الحساب موقوف</h2><p class="mu">تم إيقاف حسابك بسبب مخالفة قواعد الاستخدام. لو شايف إن ده حصل بالغلط، تواصل مع إدارة التطبيق.</p><button class="btn red" id="bo">تسجيل الخروج</button></div>`;
@@ -536,6 +547,8 @@ async function openDrawer(){
   if(isAdm){try{pendingReports=(await getDocs(collection(db,"reports"))).docs.filter(d=>!d.data().reviewed).length;}catch{}}
   draw(st);
 }
+async function shareOffer(o){const url=location.origin+location.pathname+"?o="+o.id,txt="عرض مقايضة: "+o.title+" — مقابل: "+(o.want||"أي حاجة مناسبة");
+  try{if(navigator.share){await navigator.share({title:o.title,text:txt,url});return;}await navigator.clipboard.writeText(txt+"\n"+url);toast("تم نسخ رابط العرض ✅");}catch{}}
 async function shareApp(){const url=location.origin+location.pathname,txt="جرّب تطبيق مقايضة: بدّل اللي مش محتاجه بحاجة محتاجها";
   try{if(navigator.share){await navigator.share({title:"مقايضة",text:txt,url});return;}await navigator.clipboard.writeText(txt+" "+url);toast("تم نسخ الرابط ✅");}catch{}}
 
@@ -573,7 +586,7 @@ async function homeView(){
   if(curView==="home")renderList();
 }
 function renderList(){const q=fq.trim().toLowerCase();
-  const r=allOffers.filter(o=>o.status!=="done"&&o.status!=="hidden"&&(!fc||o.cat===fc)&&(!fg||o.gov===fg)&&(!q||[o.title,o.desc,o.want,o.city].join(" ").toLowerCase().includes(q)));
+  const r=allOffers.filter(o=>o.status!=="done"&&o.status!=="hidden"&&!isBlk(o.ownerUid)&&(!fc||o.cat===fc)&&(!fg||o.gov===fg)&&(!q||[o.title,o.desc,o.want,o.city].join(" ").toLowerCase().includes(q)));
   const l=$("#list");if(!l)return;l.innerHTML=r.length?r.map(o=>cardHTML(o)).join(""):emptyBox("search","مفيش عروض مطابقة","جرّب تغيّر البحث أو الفلتر، أو كن أول من يضيف عرض!");}
 
 /* favorites */
@@ -599,24 +612,25 @@ async function offerView(id){
   ${ph.length>1?`<div class="mu sm ctr" style="margin-top:6px">← اسحب لمشاهدة ${ph.length} صور</div>`:""}
   <h2 style="margin-top:12px;font-size:21px">${esc(o.title)}</h2>
   ${done?`<div class="banner">${ic("check")}<span>تمت المقايضة${o.swappedWithName?` مع ${esc(o.swappedWithName)}`:""}</span></div>`:""}
-  <div class="pills"><span class="pill">${ic("pin")}${esc([o.city,o.gov].filter(Boolean).join("، "))}</span><span class="pill">${ic("tag")}${esc(o.cat)}</span>${o.cond?`<span class="pill">${ic("check")}${esc(o.cond)}</span>`:""}<span class="pill">${ago(o.createdAt)}</span></div>
+  <div class="pills"><span class="pill">${ic("pin")}${esc([o.city,o.gov].filter(Boolean).join("، "))}</span><span class="pill">${ic("tag")}${esc(o.cat)}</span>${o.cond?`<span class="pill">${ic("check")}${esc(o.cond)}</span>`:""}${o.value?`<span class="pill">💰 ≈ ${(+o.value).toLocaleString("ar-EG")} جنيه</span>`:""}${o.cash?`<span class="pill">🤝 يقبل فرق فلوس</span>`:""}<span class="pill">${ago(o.createdAt)}</span></div>
   ${o.desc?`<p style="line-height:1.8;margin:6px 0">${esc(o.desc).replace(/\n/g,"<br>")}</p>`:""}
   <div class="wantbox"><small>عاوز يقايضها بـ</small><b>${esc(o.want)}</b></div>
-  <div class="card ownc" id="oc">${avatar(owner?.photo,owner?.name||o.ownerName,52)}<div style="flex:1"><b>${esc(owner?.name||o.ownerName||"مستخدم")}</b><div class="sm">${st?ratingTxt(st.avg,st.count):""}</div><div class="loc">${ic("pin")} ${esc(owner?where_(owner):"")}</div></div><span style="transform:scaleX(-1);display:inline-flex;color:var(--mu)">${ic("back")}</span></div>
+  <div class="card ownc" id="oc">${avatar(owner?.photo,owner?.name||o.ownerName,52)}<div style="flex:1"><b>${esc(owner?.name||o.ownerName||"مستخدم")} ${vfBadge(st)}</b><div class="sm">${st?ratingTxt(st.avg,st.count):""}</div><div class="loc">${ic("pin")} ${esc(owner?where_(owner):"")}</div></div><span style="transform:scaleX(-1);display:inline-flex;color:var(--mu)">${ic("back")}</span></div>
   <div id="acts"></div><p class="mu sm ctr">${ic("shield")} قابل الطرف التاني في مكان عام، ولا تدفع فلوس مقدماً.</p>`;
   $("#oc").onclick=()=>go("user",o.ownerUid);
   const a=$("#acts");
   if(mine){
     a.innerHTML=done?`<button class="btn" id="ro">${ic("refresh")} إعادة نشر العرض</button>`:`<button class="btn" id="dn">${ic("check")} تمت المقايضة</button><button class="btn sec" id="ed">${ic("edit")} تعديل العرض</button>`;
-    a.innerHTML+=`<button class="btn red" id="dl">${ic("trash")} حذف العرض</button>`;
+    a.innerHTML+=`<button class="btn sec" id="sh2">${ic("share")} مشاركة العرض</button><button class="btn red" id="dl">${ic("trash")} حذف العرض</button>`;
     if($("#dn"))$("#dn").onclick=()=>markSwapped(o);if($("#ed"))$("#ed").onclick=()=>go("edit",id);
     if($("#ro"))$("#ro").onclick=async()=>{await updateDoc(doc(db,"offers",id),{status:"open",swappedWithName:"",swappedWithUid:""});toast("اتنشر تاني ✅");offerView(id);};
+    $("#sh2").onclick=()=>shareOffer(o);
     $("#dl").onclick=async()=>{if(await confirmSheet("متأكد إنك عاوز تحذف العرض نهائياً؟","حذف",true)){await deleteDoc(doc(db,"offers",id));toast("اتحذف");go("mine",null,"replace");}};
   }else{
     a.innerHTML=`<button class="btn gold" id="pr" ${done?"disabled":""}>${ic("swap")} ${done?"العرض ده اتقايض":"اعرض مقايضة"}</button>
     <div class="row2"><button class="btn sec" id="ch">${ic("chat")} مراسلة</button><button class="btn sec" id="sh">${ic("share")} مشاركة</button></div><button class="btn red" id="rp">${ic("flag")} إبلاغ</button>`;
     $("#fv").onclick=async e=>{const on=await toggleFav(id);e.currentTarget.classList.toggle("on",on);toast(on?"أضيف للمفضلة ❤️":"اتشال من المفضلة");};
-    $("#sh").onclick=shareApp;
+    $("#sh").onclick=()=>shareOffer(o);
     $("#pr").onclick=()=>proposeSheet(o,owner);
     $("#ch").onclick=async()=>{const cid=id+"_"+me.uid;
       await setDoc(doc(db,"chats",cid),{offerId:id,offerTitle:o.title,participants:[o.ownerUid,me.uid],
@@ -657,6 +671,7 @@ async function offerForm(id){
   <div class="row2"><div class="fld"><label>الفئة *</label><select id="c">${opts(CATN,"اختر",o?.cat)}</select></div><div class="fld"><label>الحالة *</label><select id="cd">${opts(CONDS,"اختر",o?.cond)}</select></div></div>
   <div class="fld"><label>الوصف</label><textarea id="d" maxlength="500" placeholder="الحالة، العمر، العيوب، الملحقات...">${esc(o?.desc)}</textarea></div>
   <div class="fld"><label>عاوز تقايضها بإيه؟ *</label><input id="w" maxlength="100" placeholder="مثال: موبايل أو لابتوب بنفس القيمة" value="${esc(o?.want)}"></div>
+  <div class="row2"><div class="fld"><label>القيمة التقريبية (جنيه)</label><input id="vl" type="number" inputmode="numeric" min="0" max="10000000" placeholder="مثال: 5000" value="${o?.value||""}"></div><div class="fld"><label>فرق الفلوس</label><label class="opt" style="margin:0;padding:12px"><input type="checkbox" id="ca" ${o?.cash?"checked":""}><span>أقبل فرق فلوس</span></label></div></div>
   <div class="row2"><div class="fld"><label>المحافظة *</label><select id="g">${opts(GOVS,"اختر",o?.gov||prof.gov)}</select></div><div class="fld"><label>المدينة / المنطقة *</label><input id="ci" maxlength="40" value="${esc(o?.city||prof.city)}"></div></div>
   <button class="btn" id="s">${o?"حفظ التعديلات":"نشر العرض"}</button></div>`;
   const draw=()=>{$("#ths").innerHTML=ph.map((p,i)=>`<div class="th"><img src="${esc(p)}" alt=""><button data-x="${i}">${ic("x")}</button></div>`).join("")+
@@ -665,7 +680,7 @@ async function offerForm(id){
     const fl=$("#fl");if(fl)fl.onchange=async e=>{const fs=[...e.target.files].slice(0,4-ph.length);toast("جاري تجهيز الصور...");
       for(const f of fs){try{ph.push(await compress(f));}catch{toast("تعذر قراءة إحدى الصور");}}draw();};};
   draw();
-  $("#s").onclick=async()=>{const d={title:$("#t").value.trim(),desc:$("#d").value.trim(),want:$("#w").value.trim(),cat:$("#c").value,cond:$("#cd").value,gov:$("#g").value,city:$("#ci").value.trim()};
+  $("#s").onclick=async()=>{const d={title:$("#t").value.trim(),desc:$("#d").value.trim(),want:$("#w").value.trim(),cat:$("#c").value,cond:$("#cd").value,gov:$("#g").value,city:$("#ci").value.trim(),value:Math.max(0,Math.round(+$("#vl").value||0)),cash:$("#ca").checked};
     if(!ph.length)return toast("ضيف صورة واحدة على الأقل");
     if(!d.title||!d.want||!d.cat||!d.cond||!d.gov||!d.city)return toast("كمّل الحقول اللي عليها نجمة *");
     if(ph.join("").length>850000)return toast("الصور كبيرة، قلل العدد");
@@ -729,10 +744,12 @@ async function chatView(cid){
 }
 
 /* profiles */
+const trusted=st=>st&&st.done>=3&&st.count>=2&&st.avg>=4;
+const vfBadge=st=>trusted(st)?`<span class="vf">✔ موثوق</span>`:"";
 function statsBlock(st){return `<div class="sts"><div><b>${st.open}</b><span>متاحة</span></div><div><b>${st.done}</b><span>اتقايضت</span></div><div><b>${st.count?st.avg.toFixed(1):"–"}</b><span>${st.count} تقييم</span></div></div>`;}
 async function meView(){
   view.innerHTML=loader;const st=await loadStats(me.uid);if(curView!=="me")return;
-  view.innerHTML=`<div class="card ph-head">${avatar(prof.photo,prof.name,96)}<div class="nm">${esc(prof.name)}</div><div class="loc" style="justify-content:center">${ic("pin")} ${esc(where_(prof))}</div>
+  view.innerHTML=`<div class="card ph-head">${avatar(prof.photo,prof.name,96)}<div class="nm">${esc(prof.name)} ${vfBadge(st)}</div><div class="loc" style="justify-content:center">${ic("pin")} ${esc(where_(prof))}</div>
   ${prof.bio?`<p class="mu" style="margin:8px 0 0">${esc(prof.bio)}</p>`:""}${statsBlock(st)}<button class="btn sec" id="ep" style="margin:16px 0 0">${ic("edit")} تعديل ملفي</button></div>
   <div class="sg"><button data-g="mine">${ic("box")}عروضي</button><button data-g="swapped">${ic("check")}تمت مقايضتها</button><button data-g="favs">${ic("heart")}المفضلة</button><button data-g="chats">${ic("chat")}الرسائل</button></div>
   <div class="card"><button class="mi" id="th">${ic("moon")}<span>الوضع الليلي</span><span class="sw ${isDark()?"on":""}"></span></button>${isAdm?`<button class="mi" data-g="admin">${ic("flag")}<span>لوحة الإدارة</span></button>`:""}<button class="mi" data-g="safety">${ic("shield")}<span>نصائح الأمان</span></button>
@@ -745,11 +762,16 @@ async function userView(uid){
   if(uid===me.uid)return go("me",null,"replace");
   view.innerHTML=loader;const [us,st]=await Promise.all([getDoc(doc(db,"users",uid)),loadStats(uid)]);
   if(!us.exists()){view.innerHTML=emptyBox("user","المستخدم مش موجود");return;}const u=us.data(),open=st.offers.filter(o=>o.status!=="done"&&o.status!=="hidden");
-  view.innerHTML=`<div class="card ph-head">${avatar(u.photo,u.name,96)}<div class="nm">${esc(u.name)}</div><div class="loc" style="justify-content:center">${ic("pin")} ${esc(where_(u))}</div>
+  view.innerHTML=`<div class="card ph-head">${avatar(u.photo,u.name,96)}<div class="nm">${esc(u.name)} ${vfBadge(st)}</div><div class="loc" style="justify-content:center">${ic("pin")} ${esc(where_(u))}</div>
   ${u.bio?`<p class="mu" style="margin:8px 0 0">${esc(u.bio)}</p>`:""}${statsBlock(st)}</div>
   <h3 style="margin:18px 2px 10px">عروضه المتاحة (${open.length})</h3><div class="grid" id="list">${open.length?open.map(o=>cardHTML(o)).join(""):emptyBox("box","مفيش عروض متاحة حالياً")}</div>
   ${st.reviews.length?`<h3 style="margin:20px 2px 10px">التقييمات</h3>${st.reviews.slice(0,8).map(r=>`<div class="card rv"><div class="h"><span>${esc(r.raterName||"مستخدم")}</span><span class="s gold">${starsHTML(r.stars)}</span></div>${r.comment?`<div class="mu" style="margin-top:6px">${esc(r.comment)}</div>`:""}</div>`).join("")}`:""}`;
   bindCards($("#list"));
+  const bl=(prof.blocked||[]).includes(uid);
+  view.insertAdjacentHTML("beforeend",`<button class="btn ${bl?"sec":"red"}" id="blk" style="margin-top:18px">${bl?"فك الحظر عن المستخدم":"حظر المستخدم"}</button>`);
+  $("#blk").onclick=async()=>{if(!bl&&!await confirmSheet("حظر المستخدم ده؟ مش هتشوف عروضه ومش هيقدر يبعتلك طلبات مقايضة.","حظر",true))return;
+    const a=bl?(prof.blocked||[]).filter(x=>x!==uid):[...(prof.blocked||[]),uid];
+    try{await updateDoc(doc(db,"users",me.uid),{blocked:a});prof.blocked=a;toast(bl?"اتفك الحظر":"اتحظر المستخدم");userView(uid);}catch(e){toast("فشل: "+(e.code||e.message));}};
 }
 function profileForm(setup){
   const p=prof||{};let photo=p.photo||(setup?me.photoURL:"")||"";
