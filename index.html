@@ -188,7 +188,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.4";
+const VERSION="v7.5";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -259,6 +259,7 @@ const isDark=()=>document.documentElement.dataset.theme==="dark";
 
 /* state */
 let me=null,prof=null,unsub=null,unsubBadge=null,lastUnread=0,curView="",depth=0;
+let unsubFeat=null,featPending=0,featSeen=new Set(),featFirst=true;
 let allOffers=[],fq="",fc="",fg="",isAdm=false,pendingReports=0,adminDbg="";
 const stopChat=()=>{if(unsub){unsub();unsub=null}};
 
@@ -302,7 +303,7 @@ const getSeen=()=>{try{return +localStorage.getItem(seenKey())||0}catch{return 0
 const setSeen=t=>{try{localStorage.setItem(seenKey(),String(t))}catch{}};
 const offSec=o=>o.createdAt?.seconds||Math.floor(Date.now()/1000);
 const newOffers=()=>{const x=getSeen();return notifOffers.filter(o=>offSec(o)>x)};
-function setNb(){const n=newOffers().length+(typeof pendingIn==="function"?pendingIn().length:0),b=$("#nbd");if(b){b.style.display=n?"flex":"none";b.textContent=n>9?"9+":n;}}
+function setNb(){const n=newOffers().length+(typeof pendingIn==="function"?pendingIn().length:0)+(isAdm?featPending:0),b=$("#nbd");if(b){b.style.display=n?"flex":"none";b.textContent=n>9?"9+":n;}}
 async function pushLocal(o){try{if(!("Notification" in window)||Notification.permission!=="granted"||document.visibilityState==="visible")return;
   const t="🆕 عرض جديد: "+o.title,opt={body:"عاوز يقايض بـ: "+(o.want||"أي حاجة")+(o.gov?" • "+o.gov:""),icon:"icon-192.png",badge:"icon-192.png",tag:"offer-"+o.id,dir:"rtl",lang:"ar"};
   const reg=navigator.serviceWorker&&await navigator.serviceWorker.getRegistration();reg?reg.showNotification(t,opt):new Notification(t,opt);}catch{}}
@@ -315,13 +316,21 @@ function watchOffers(){
     if(!offFirst){const fresh=notifOffers.filter(o=>!prev.has(o.id)&&offSec(o)>getSeen());
       if(fresh.length&&curView!=="notifs"){const hit=fresh.find(o=>(prof?.wants||[]).some(w=>wmatch(w,o)));toast(hit?"🎯 عرض بيناسب اللي بتدور عليه: "+hit.title:"🆕 عرض جديد: "+fresh[0].title);pushLocal(hit||fresh[0]);}}
     offFirst=false;setNb();if(curView==="notifs")notifView();},()=>{});}
+function watchFeat(){
+  if(unsubFeat){unsubFeat();unsubFeat=null;}featPending=0;featSeen=new Set();featFirst=true;if(!me||!isAdm)return;
+  unsubFeat=onSnapshot(query(collection(db,"featureRequests"),where("status","==","pending")),s=>{
+    const fresh=s.docs.filter(d=>!featSeen.has(d.id));s.docs.forEach(d=>featSeen.add(d.id));featPending=s.size;
+    if(!featFirst&&fresh.length){const r=fresh[0].data();toast("⭐ طلب تمييز جديد: "+(r.offerTitle||"عرض")+" — "+(r.uname||""));
+      try{if("Notification" in window&&Notification.permission==="granted"&&document.visibilityState!=="visible"){const t="⭐ طلب تمييز جديد",opt={body:(r.offerTitle||"")+" • "+(r.planName||"")+" • "+(r.price||"")+" ج",icon:"icon-192.png",badge:"icon-192.png",tag:"feat-"+fresh[0].id,dir:"rtl",lang:"ar"};
+        navigator.serviceWorker.getRegistration().then(g=>g?g.showNotification(t,opt):new Notification(t,opt));}}catch{}}
+    featFirst=false;setNb();if(curView==="notifs")notifView();},()=>{});}
 function notifView(){
   const perm="Notification" in window?Notification.permission:"na";
-  view.innerHTML=`${pendingIn().length?`<div class="card li un" id="pq">${ic("swap")}<div class="bd"><b>عندك ${pendingIn().length} طلب مقايضة جديد</b><span>اضغط للمراجعة والقبول أو الرفض</span></div></div>`:""}${perm==="default"?`<div class="card pad" style="margin-bottom:12px"><b>فعّل تنبيهات الجهاز</b><p class="mu sm" style="margin:6px 0 10px">عشان يوصلك تنبيه بالعروض الجديدة حتى لو التطبيق في الخلفية.</p><button class="btn sm" id="np">${ic("bell")} تفعيل التنبيهات</button></div>`:""}
+  view.innerHTML=`${isAdm&&featPending?`<div class="card li un" id="fq">${ic("flag")}<div class="bd"><b>⭐ عندك ${featPending} طلب تمييز عرض</b><span>اضغط للمراجعة في لوحة الإدارة</span></div></div>`:""}${pendingIn().length?`<div class="card li un" id="pq">${ic("swap")}<div class="bd"><b>عندك ${pendingIn().length} طلب مقايضة جديد</b><span>اضغط للمراجعة والقبول أو الرفض</span></div></div>`:""}${perm==="default"?`<div class="card pad" style="margin-bottom:12px"><b>فعّل تنبيهات الجهاز</b><p class="mu sm" style="margin:6px 0 10px">عشان يوصلك تنبيه بالعروض الجديدة حتى لو التطبيق في الخلفية.</p><button class="btn sm" id="np">${ic("bell")} تفعيل التنبيهات</button></div>`:""}
   ${notifOffers.length?notifOffers.map(o=>{const ph=safeImg(o.photos?.[0]||o.photo),nw=offSec(o)>nvSeen;
     return `<div class="card li ${nw?"un":""}" data-o="${o.id}">${ph?`<img src="${esc(ph)}" alt="" style="width:58px;height:58px;border-radius:14px;object-fit:cover;flex:none">`:`<div style="width:58px;height:58px;border-radius:14px;background:var(--soft);display:grid;place-items:center;flex:none">${ic("box")}</div>`}
     <div class="bd"><b>${nw?"🆕 ":""}${esc(o.title)}</b><span>عاوز: ${esc(o.want||"—")}</span><span>${esc(where_(o))} • ${ago(o.createdAt)}</span></div></div>`;}).join(""):emptyBox("bell","مفيش إشعارات","هتلاقي هنا كل عرض جديد بينزل.")}`;
-  view.querySelectorAll("[data-o]").forEach(c=>c.onclick=()=>go("offer",c.dataset.o));const pq=$("#pq");if(pq)pq.onclick=()=>go("props","in");
+  view.querySelectorAll("[data-o]").forEach(c=>c.onclick=()=>go("offer",c.dataset.o));const pq=$("#pq");if(pq)pq.onclick=()=>go("props","in");const fq2=$("#fq");if(fq2)fq2.onclick=()=>go("admin","feat");
   const np=$("#np");if(np)np.onclick=async()=>{try{await Notification.requestPermission();}catch{}notifView();};
   const top=notifOffers.reduce((m,o)=>Math.max(m,offSec(o)),0);setSeen(Math.max(top,Math.floor(Date.now()/1000)));setNb();
 }
@@ -547,11 +556,12 @@ function loginView(){
 }
 let DEEP=null;try{DEEP=new URLSearchParams(location.search).get("o");}catch{}
 onAuthStateChanged(auth,async u=>{
-  me=u;prof=null;isAdm=false;pendingReports=0;watchUnread();watchOffers();watchProps();
+  me=u;prof=null;isAdm=false;pendingReports=0;if(unsubFeat){unsubFeat();unsubFeat=null;}featPending=0;watchUnread();watchOffers();watchProps();
   if(!u){loginView();return;}
   document.body.className="nonav";$("#hd").style.display="flex";view.innerHTML=loader;
   try{const s=await getDoc(doc(db,"users",u.uid));prof=s.exists()?s.data():null;}catch(e){toast("خطأ في التحميل: "+(e.code||e.message));}
   try{isAdm=(await getDoc(doc(db,"admins",u.uid))).exists();adminDbg=isAdm?"أدمن ✅":"مفيش مستند باسم الـ UID ده في admins";}catch(e){isAdm=false;adminDbg="خطأ: "+(e.code||e.message);}
+  watchFeat();
   if(prof&&prof.banned){bannedView();return;}
   (!prof||!prof.complete)?go("setup",null,"replace"):(go("home",null,"replace"),(()=>{const d=DEEP;DEEP=null;if(d){try{history.replaceState(history.state,"",location.pathname);}catch{}go("offer",d);}})());
 });
@@ -580,7 +590,7 @@ async function openDrawer(){
     <div style="padding:10px 0">
     ${item("user","ملفي الشخصي","me")}${item("box","عروضي","mine",st?`<span class="c">${st.open}</span>`:"")}${item("check","تمت مقايضتها","swapped",st?`<span class="c">${st.done}</span>`:"")}
     ${item("heart","المفضلة","favs",`<span class="c">${(prof.favs||[]).length}</span>`)}${item("chat","الرسائل","chats")}${item("target","مقايضات مناسبة","matches",matchCount?`<span class="num">${matchCount}</span>`:"")}${item("swap","طلبات المقايضة","props",pendingIn().length?`<span class="num">${pendingIn().length}</span>`:"")}${item("bell","الإشعارات","notifs",newOffers().length?`<span class="num">${newOffers().length}</span>`:"")}
-    ${isAdm?item("flag","لوحة الإدارة","admin",pendingReports?`<span class="num">${pendingReports}</span>`:""):""}
+    ${isAdm?item("flag","لوحة الإدارة","admin",(pendingReports+featPending)?`<span class="num">${pendingReports+featPending}</span>`:""):""}
     <div class="sep"></div>
     <button class="mi" data-a="theme">${ic("moon")}<span>الوضع الليلي</span><span class="sw ${isDark()?"on":""}"></span></button>
     ${item("shield","نصائح الأمان","safety")}${item("share","شارك التطبيق","share")}${item("info","عن التطبيق","about")}
