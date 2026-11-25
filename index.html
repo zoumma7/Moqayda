@@ -188,7 +188,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.5";
+const VERSION="v7.6";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -198,6 +198,30 @@ const CATS=[["إلكترونيات","💻"],["موبايلات","📱"],["ملا
 const CATN=CATS.map(c=>c[0]);
 const CONDS=["جديد","بحالة ممتازة","بحالة جيدة","مستعمل","يحتاج صيانة"];
 const GOVS=["القاهرة","الجيزة","الإسكندرية","الدقهلية","الشرقية","الغربية","المنوفية","القليوبية","البحيرة","كفر الشيخ","دمياط","بورسعيد","الإسماعيلية","السويس","الفيوم","بني سويف","المنيا","أسيوط","سوهاج","قنا","الأقصر","أسوان","مطروح","البحر الأحمر","شمال سيناء","جنوب سيناء","الوادي الجديد"];
+const COUNTRIES={"مصر":GOVS,
+"السعودية":["الرياض","مكة المكرمة","المدينة المنورة","القصيم","المنطقة الشرقية","عسير","تبوك","حائل","الحدود الشمالية","جازان","نجران","الباحة","الجوف"],
+"الإمارات":["أبوظبي","دبي","الشارقة","عجمان","أم القيوين","رأس الخيمة","الفجيرة"],
+"الكويت":["العاصمة","حولي","الفروانية","الأحمدي","الجهراء","مبارك الكبير"],
+"قطر":["الدوحة","الريان","الوكرة","الخور والذخيرة","الشمال","أم صلال","الضعاين","الشحانية"],
+"البحرين":["العاصمة","المحرق","الشمالية","الجنوبية"],
+"عُمان":["مسقط","ظفار","مسندم","البريمي","الداخلية","شمال الباطنة","جنوب الباطنة","شمال الشرقية","جنوب الشرقية","الظاهرة","الوسطى"],
+"الأردن":["عمّان","إربد","الزرقاء","البلقاء","مادبا","الكرك","الطفيلة","معان","العقبة","جرش","عجلون","المفرق"],
+"فلسطين":["القدس","رام الله والبيرة","نابلس","الخليل","بيت لحم","جنين","طولكرم","قلقيلية","سلفيت","طوباس","أريحا","شمال غزة","غزة","دير البلح","خان يونس","رفح"],
+"لبنان":["بيروت","جبل لبنان","الشمال","عكار","البقاع","بعلبك الهرمل","الجنوب","النبطية"],
+"سوريا":["دمشق","ريف دمشق","حلب","حمص","حماة","اللاذقية","طرطوس","إدلب","دير الزور","الرقة","الحسكة","درعا","السويداء","القنيطرة"],
+"العراق":["بغداد","البصرة","نينوى","أربيل","السليمانية","دهوك","كركوك","الأنبار","ديالى","صلاح الدين","بابل","كربلاء","النجف","واسط","ذي قار","ميسان","المثنى","القادسية","حلبجة"],
+"اليمن":["أمانة العاصمة","صنعاء","عدن","تعز","الحديدة","إب","ذمار","حضرموت","لحج","أبين","شبوة","مأرب","البيضاء","حجة","صعدة","عمران","المحويت","ريمة","الضالع","الجوف","المهرة","سقطرى"],
+"ليبيا":["طرابلس","بنغازي","مصراتة","الزاوية","البيضاء","طبرق","سبها","سرت","الخمس","زليتن","درنة","أجدابيا","الجفرة","غات","الكفرة"],
+"تونس":["تونس","أريانة","بن عروس","منوبة","نابل","زغوان","بنزرت","باجة","جندوبة","الكاف","سليانة","القيروان","القصرين","سيدي بوزيد","سوسة","المنستير","المهدية","صفاقس","قفصة","توزر","قبلي","قابس","مدنين","تطاوين"],
+"الجزائر":["أدرار","الشلف","الأغواط","أم البواقي","باتنة","بجاية","بسكرة","بشار","البليدة","البويرة","تمنراست","تبسة","تلمسان","تيارت","تيزي وزو","الجزائر","الجلفة","جيجل","سطيف","سعيدة","سكيكدة","سيدي بلعباس","عنابة","قالمة","قسنطينة","المدية","مستغانم","المسيلة","معسكر","ورقلة","وهران","البيض","إليزي","برج بوعريريج","بومرداس","الطارف","تندوف","تيسمسيلت","الوادي","خنشلة","سوق أهراس","تيبازة","ميلة","عين الدفلى","النعامة","عين تموشنت","غرداية","غليزان","تيميمون","برج باجي مختار","أولاد جلال","بني عباس","إن صالح","إن قزام","تقرت","جانت","المغير","المنيعة"],
+"المغرب":["طنجة تطوان الحسيمة","الشرق","فاس مكناس","الرباط سلا القنيطرة","بني ملال خنيفرة","الدار البيضاء سطات","مراكش آسفي","درعة تافيلالت","سوس ماسة","كلميم واد نون","العيون الساقية الحمراء","الداخلة وادي الذهب"],
+"السودان":["الخرطوم","الجزيرة","النيل الأبيض","النيل الأزرق","سنار","القضارف","كسلا","البحر الأحمر","نهر النيل","الشمالية","شمال كردفان","جنوب كردفان","غرب كردفان","شمال دارفور","جنوب دارفور","غرب دارفور","وسط دارفور","شرق دارفور"],
+"موريتانيا":["نواكشوط الغربية","نواكشوط الشمالية","نواكشوط الجنوبية","داخلت نواذيبو","الحوض الشرقي","الحوض الغربي","العصابة","كوركول","البراكنة","الترارزة","آدرار","تكانت","كيدي ماغا","تيرس زمور","إينشيري"],
+"الصومال":["مقديشو","هرجيسا","بربرة","بوصاصو","كيسمايو","بيدوا","غاروي","جالكعيو","بلدوين","برعو"],
+"جيبوتي":["جيبوتي","علي صبيح","دخيل","تاجورة","أوبوك","عرتا"],
+"جزر القمر":["غراند كومور","أنجوان","موهيلي"]};
+const ctry=c=>c||"مصر",govsOf=c=>COUNTRIES[ctry(c)]||[],copts=sel=>Object.keys(COUNTRIES).map(a=>`<option ${a===ctry(sel)?"selected":""}>${a}</option>`).join("");
+const bindCtry=(cid,gid,gph,selG)=>{const c=$("#"+cid),g=$("#"+gid);c.onchange=()=>{g.innerHTML=opts(govsOf(c.value),gph,"");};};
 
 const IC={
 home:'<path d="M3 10.5 12 3l9 7.5V20a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1z"/>',
@@ -260,7 +284,7 @@ const isDark=()=>document.documentElement.dataset.theme==="dark";
 /* state */
 let me=null,prof=null,unsub=null,unsubBadge=null,lastUnread=0,curView="",depth=0;
 let unsubFeat=null,featPending=0,featSeen=new Set(),featFirst=true;
-let allOffers=[],fq="",fc="",fg="",isAdm=false,pendingReports=0,adminDbg="";
+let allOffers=[],fq="",fc="",fg="",fk=null,isAdm=false,pendingReports=0,adminDbg="";
 const stopChat=()=>{if(unsub){unsub();unsub=null}};
 
 /* sheet + drawer */
@@ -578,7 +602,7 @@ async function loadStats(uid){
   const avg=reviews.length?reviews.reduce((a,r)=>a+r.stars,0)/reviews.length:0;
   return {offers,open:offers.filter(o=>o.status!=="done"&&o.status!=="hidden").length,done:offers.filter(o=>o.status==="done").length,avg,count:reviews.length,reviews};
 }
-const where_=p=>[p.city,p.gov].filter(Boolean).join("، ");
+const where_=p=>[p.city,p.gov,p.country&&p.country!=="مصر"?p.country:""].filter(Boolean).join("، ");
 
 /* drawer */
 async function openDrawer(){
@@ -616,7 +640,7 @@ function cardHTML(o,badge){
   return `<div class="card offer ${isFeat(o)?"featc":""}" data-id="${o.id}"><div class="ph">${isFeat(o)?'<span class="fbd">⭐ مميز</span>':""}${safeImg(ph)?`<img loading="lazy" src="${esc(safeImg(ph))}" alt="">`:""}
   ${badge?`<span class="badge ${badge==="done"?"done":""}">${badge==="done"?"تمت المقايضة":"متاحة"}</span>`:(o.cond?`<span class="badge cond">${esc(o.cond)}</span>`:"")}
   ${o.ownerUid!==me.uid?`<button class="fav ${fav?"on":""}" aria-label="مفضلة">${ic("heart")}</button>`:""}</div>
-  <div class="ct"><h3>${esc(o.title)}</h3><div class="loc">${ic("pin")} ${esc([o.city,o.gov].filter(Boolean).join("، "))}</div>
+  <div class="ct"><h3>${esc(o.title)}</h3><div class="loc">${ic("pin")} ${esc(where_(o))}</div>
   <div class="want">${ic("swap")}<span>${esc(o.want)}</span></div>
   <div class="own">${esc(o.ownerName||"")} · ${ago(o.createdAt)}</div></div></div>`;}
 async function toggleFav(id){const s=new Set(prof.favs||[]),on=!s.has(id);on?s.add(id):s.delete(id);prof.favs=[...s];
@@ -632,14 +656,17 @@ async function loadMore(){const b=$("#lm");if(b){b.disabled=true;b.textContent="
     const ids=new Set(allOffers.map(o=>o.id));allOffers=allOffers.concat(s.docs.map(d=>({id:d.id,...d.data()})).filter(o=>!ids.has(o.id)));homeCursor=s.docs[s.docs.length-1]||homeCursor;homeMore=s.docs.length>=PAGE;}
   catch(e){toast("خطأ: "+(e.code||e.message));}renderList();matchBanner();}
 async function homeView(){
+  if(fk===null)fk=prof?.country||"مصر";
   view.innerHTML=`<div class="hero"><div class="hi">أهلاً ${esc(first(prof.name))} 👋</div><div class="sub">إيه اللي عندك وعاوز تبدّله النهاردة؟</div></div>
   <div id="mbn"></div><div class="sr">${ic("search")}<input id="q" placeholder="ابحث عن أي حاجة..." value="${esc(fq)}"></div>
   <div class="chips" id="chips"><button class="chip ${fc?"":"on"}" data-c="">الكل</button>${CATS.map(c=>`<button class="chip ${fc===c[0]?"on":""}" data-c="${c[0]}">${c[1]} ${c[0]}</button>`).join("")}</div>
-  <div class="row2" style="margin-bottom:12px"><select id="fg">${opts(GOVS,"كل المحافظات",fg)}</select><button class="btn sec sm" id="mg">${ic("pin")} محافظتي</button><button class="btn sec sm" id="rf" aria-label="تحديث">${ic("refresh")}</button></div>
+  <div class="row2" style="margin-bottom:8px"><select id="fk"><option value="">كل الدول العربية</option>${Object.keys(COUNTRIES).map(a=>`<option ${a===fk?"selected":""}>${a}</option>`).join("")}</select><select id="fg">${opts(govsOf(fk),"كل المحافظات",fg)}</select></div><div class="row2" style="margin-bottom:12px"><button class="btn sec sm" id="mg">${ic("pin")} محافظتي</button><button class="btn sec sm" id="rf" aria-label="تحديث">${ic("refresh")}</button></div>
   <div class="grid" id="list">${'<div class="card sk"></div>'.repeat(4)}</div><div id="lmw" style="margin:14px 0"></div>`;
   $("#q").oninput=e=>{fq=e.target.value;renderList();};
   $("#fg").onchange=e=>{fg=e.target.value;renderList();};
-  $("#mg").onclick=()=>{fg=prof.gov||"";$("#fg").value=fg;renderList();};
+  $("#fk").onchange=e=>{fk=e.target.value;fg="";$("#fg").innerHTML=opts(govsOf(fk),"كل المحافظات","");$("#fg").disabled=!fk;renderList();};
+  $("#fg").disabled=!fk;
+  $("#mg").onclick=()=>{fk=prof.country||"مصر";fg=prof.gov||"";$("#fk").value=fk;$("#fg").disabled=false;$("#fg").innerHTML=opts(govsOf(fk),"كل المحافظات",fg);renderList();};
   $("#rf").onclick=()=>homeView();
   $("#chips").onclick=e=>{const b=e.target.closest(".chip");if(!b)return;fc=b.dataset.c;document.querySelectorAll(".chip").forEach(x=>x.classList.toggle("on",x===b));renderList();};
   bindCards($("#list"));
@@ -649,7 +676,7 @@ async function homeView(){
   if(curView==="home")renderList();
 }
 function renderList(){const q=fq.trim().toLowerCase();
-  const r=allOffers.filter(o=>o.status!=="done"&&o.status!=="hidden"&&!isBlk(o.ownerUid)&&(!fc||o.cat===fc)&&(!fg||o.gov===fg)&&(!q||[o.title,o.desc,o.want,o.city].join(" ").toLowerCase().includes(q)));
+  const r=allOffers.filter(o=>o.status!=="done"&&o.status!=="hidden"&&!isBlk(o.ownerUid)&&(!fc||o.cat===fc)&&(!fk||ctry(o.country)===fk)&&(!fg||o.gov===fg)&&(!q||[o.title,o.desc,o.want,o.city].join(" ").toLowerCase().includes(q)));
   r.sort((a,b)=>isFeat(b)-isFeat(a));const l=$("#list");if(!l)return;const lw=$("#lmw");if(lw){lw.innerHTML=homeMore?`<button class="btn sec" id="lm">عرض المزيد</button>`:"";if($("#lm"))$("#lm").onclick=loadMore;}l.innerHTML=r.length?r.map(o=>cardHTML(o)).join(""):emptyBox("search","مفيش عروض مطابقة","جرّب تغيّر البحث أو الفلتر، أو كن أول من يضيف عرض!");}
 
 /* favorites */
@@ -675,7 +702,7 @@ async function offerView(id){
   ${ph.length>1?`<div class="mu sm ctr" style="margin-top:6px">← اسحب لمشاهدة ${ph.length} صور</div>`:""}
   <h2 style="margin-top:12px;font-size:21px">${esc(o.title)}</h2>
   ${done?`<div class="banner">${ic("check")}<span>تمت المقايضة${o.swappedWithName?` مع ${esc(o.swappedWithName)}`:""}</span></div>`:""}
-  <div class="pills"><span class="pill">${ic("pin")}${esc([o.city,o.gov].filter(Boolean).join("، "))}</span><span class="pill">${ic("tag")}${esc(o.cat)}</span>${o.cond?`<span class="pill">${ic("check")}${esc(o.cond)}</span>`:""}${o.value?`<span class="pill">💰 ≈ ${(+o.value).toLocaleString("ar-EG")} جنيه</span>`:""}${o.cash?`<span class="pill">🤝 يقبل فرق فلوس</span>`:""}${isFeat(o)?`<span class="pill" style="background:#fff3cf;color:#7a5200">⭐ مميز حتى ${dateAr(o.featUntil)}</span>`:""}<span class="pill">${ago(o.createdAt)}</span></div>
+  <div class="pills"><span class="pill">${ic("pin")}${esc(where_(o))}</span><span class="pill">${ic("tag")}${esc(o.cat)}</span>${o.cond?`<span class="pill">${ic("check")}${esc(o.cond)}</span>`:""}${o.value?`<span class="pill">💰 ≈ ${(+o.value).toLocaleString("ar-EG")} جنيه</span>`:""}${o.cash?`<span class="pill">🤝 يقبل فرق فلوس</span>`:""}${isFeat(o)?`<span class="pill" style="background:#fff3cf;color:#7a5200">⭐ مميز حتى ${dateAr(o.featUntil)}</span>`:""}<span class="pill">${ago(o.createdAt)}</span></div>
   ${o.desc?`<p style="line-height:1.8;margin:6px 0">${esc(o.desc).replace(/\n/g,"<br>")}</p>`:""}
   <div class="wantbox"><small>عاوز يقايضها بـ</small><b>${esc(o.want)}</b></div>
   <div class="card ownc" id="oc">${avatar(owner?.photo,owner?.name||o.ownerName,52)}<div style="flex:1"><b>${esc(owner?.name||o.ownerName||"مستخدم")} ${vfBadge(st)}</b><div class="sm">${st?ratingTxt(st.avg,st.count):""}</div><div class="loc">${ic("pin")} ${esc(owner?where_(owner):"")}</div></div><span style="transform:scaleX(-1);display:inline-flex;color:var(--mu)">${ic("back")}</span></div>
@@ -735,15 +762,16 @@ async function offerForm(id){
   <div class="fld"><label>الوصف</label><textarea id="d" maxlength="500" placeholder="الحالة، العمر، العيوب، الملحقات...">${esc(o?.desc)}</textarea></div>
   <div class="fld"><label>عاوز تقايضها بإيه؟ *</label><input id="w" maxlength="100" placeholder="مثال: موبايل أو لابتوب بنفس القيمة" value="${esc(o?.want)}"></div>
   <div class="row2"><div class="fld"><label>القيمة التقريبية (جنيه)</label><input id="vl" type="number" inputmode="numeric" min="0" max="10000000" placeholder="مثال: 5000" value="${o?.value||""}"></div><div class="fld"><label>فرق الفلوس</label><label class="opt" style="margin:0;padding:12px"><input type="checkbox" id="ca" ${o?.cash?"checked":""}><span>أقبل فرق فلوس</span></label></div></div>
-  <div class="row2"><div class="fld"><label>المحافظة *</label><select id="g">${opts(GOVS,"اختر",o?.gov||prof.gov)}</select></div><div class="fld"><label>المدينة / المنطقة *</label><input id="ci" maxlength="40" value="${esc(o?.city||prof.city)}"></div></div>
+  <div class="fld"><label>الدولة *</label><select id="ctr">${copts(o?.country||prof.country)}</select></div>
+  <div class="row2"><div class="fld"><label>المحافظة / المنطقة *</label><select id="g">${opts(govsOf(o?.country||prof.country),"اختر",o?.gov||prof.gov)}</select></div><div class="fld"><label>المدينة / المنطقة *</label><input id="ci" maxlength="40" value="${esc(o?.city||prof.city)}"></div></div>
   <button class="btn" id="s">${o?"حفظ التعديلات":"نشر العرض"}</button></div>`;
   const draw=()=>{$("#ths").innerHTML=ph.map((p,i)=>`<div class="th"><img src="${esc(p)}" alt=""><button data-x="${i}">${ic("x")}</button></div>`).join("")+
     (ph.length<4?`<label class="th add">${ic("camera")}<span>أضف</span><input type="file" id="fl" accept="image/*" multiple hidden></label>`:"");
     document.querySelectorAll("#ths [data-x]").forEach(b=>b.onclick=()=>{ph.splice(+b.dataset.x,1);draw();});
     const fl=$("#fl");if(fl)fl.onchange=async e=>{const fs=[...e.target.files].slice(0,4-ph.length);toast("جاري تجهيز الصور...");
       for(const f of fs){try{ph.push(await compress(f));}catch{toast("تعذر قراءة إحدى الصور");}}draw();};};
-  draw();
-  $("#s").onclick=async()=>{const d={title:$("#t").value.trim(),desc:$("#d").value.trim(),want:$("#w").value.trim(),cat:$("#c").value,cond:$("#cd").value,gov:$("#g").value,city:$("#ci").value.trim(),value:Math.max(0,Math.round(+$("#vl").value||0)),cash:$("#ca").checked};
+  draw();bindCtry("ctr","g","اختر");
+  $("#s").onclick=async()=>{const d={title:$("#t").value.trim(),desc:$("#d").value.trim(),want:$("#w").value.trim(),cat:$("#c").value,cond:$("#cd").value,country:$("#ctr").value,gov:$("#g").value,city:$("#ci").value.trim(),value:Math.max(0,Math.round(+$("#vl").value||0)),cash:$("#ca").checked};
     if(!ph.length)return toast("ضيف صورة واحدة على الأقل");
     if(!d.title||!d.want||!d.cat||!d.cond||!d.gov||!d.city)return toast("كمّل الحقول اللي عليها نجمة *");
     if(ph.join("").length>850000)return toast("الصور كبيرة، قلل العدد");
@@ -841,13 +869,15 @@ function profileForm(setup){
   view.innerHTML=`<div class="card pad ctr">${setup?`<p class="mu" style="margin-top:0">كمّل بياناتك عشان الناس تثق فيك وتتعامل معاك بأمان.</p>`:""}
   <label class="avu"><span id="avw">${avatar(photo,p.name||me.displayName,108)}</span><span class="cam">${ic("camera")}</span><input type="file" id="pf" accept="image/*" hidden></label>
   <div class="fld"><label>الاسم الكامل *</label><input id="nm" maxlength="40" value="${esc(p.name||me.displayName||"")}" placeholder="اسمك الحقيقي"></div>
-  <div class="fld"><label>المحافظة *</label><select id="gv">${opts(GOVS,"اختر المحافظة",p.gov)}</select></div>
+  <div class="fld"><label>الدولة *</label><select id="cn">${copts(p.country)}</select></div>
+  <div class="fld"><label>المحافظة / المنطقة *</label><select id="gv">${opts(govsOf(p.country),"اختر المحافظة",p.gov)}</select></div>
   <div class="fld"><label>المدينة / المنطقة *</label><input id="ct" maxlength="40" value="${esc(p.city||"")}" placeholder="مثال: المنصورة - حي الجامعة"></div>
   <div class="fld"><label>نبذة عنك (اختياري)</label><textarea id="bio" maxlength="120" style="min-height:70px">${esc(p.bio||"")}</textarea></div>
   <p class="mu sm">${ic("lock")} بيظهر للناس: الاسم والصورة والمحافظة والمدينة بس. إيميلك ورقمك مش بيظهروا.</p>
   <button class="btn" id="sv">${setup?"ابدأ المقايضة 🎉":"حفظ التغييرات"}</button></div>`;
   $("#pf").onchange=async e=>{const f=e.target.files[0];if(!f)return;try{photo=await square(f);$("#avw").innerHTML=avatar(photo,"",108);}catch{toast("تعذر قراءة الصورة");}};
-  $("#sv").onclick=async()=>{const d={name:$("#nm").value.trim(),gov:$("#gv").value,city:$("#ct").value.trim(),bio:$("#bio").value.trim(),photo};
+  bindCtry("cn","gv","اختر المحافظة");
+  $("#sv").onclick=async()=>{const d={name:$("#nm").value.trim(),country:$("#cn").value,gov:$("#gv").value,city:$("#ct").value.trim(),bio:$("#bio").value.trim(),photo};
     if(d.name.length<3)return toast("اكتب اسمك الكامل (3 حروف على الأقل)");
     if(!d.photo)return toast("ضيف صورتك الشخصية");
     if(!d.gov)return toast("اختر المحافظة");
