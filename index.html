@@ -133,7 +133,7 @@ nav .fab svg{width:28px;height:28px}
 .li .bd span.tag{display:inline-block;color:#fff;font-size:11px}.seg button{font-size:13px;padding:10px 4px}
 .acts{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}.tag{display:inline-block;background:#dc2626;color:#fff;border-radius:8px;font-size:11px;padding:1px 8px;font-weight:700;margin-right:6px}
 .rrow{display:flex;gap:10px;align-items:center;margin:8px 0;padding:8px;background:var(--soft);border-radius:12px;font-size:13.5px}.rrow img{width:46px;height:46px;border-radius:10px;object-fit:cover}
-#toast{position:fixed;top:70px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 18px;border-radius:24px;font-size:14px;font-weight:600;display:none;z-index:60;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35)}
+#toast{position:fixed;bottom:96px;left:50%;transform:translateX(-50%);background:#0f172a;color:#fff;padding:11px 18px;border-radius:24px;font-size:14px;font-weight:600;display:none;z-index:60;max-width:90%;text-align:center;box-shadow:0 8px 24px rgba(0,0,0,.35)}
 #ov{display:none;position:fixed;inset:0;background:rgba(0,0,0,.94);z-index:50;align-items:center;justify-content:center;padding:10px}
 #splash{position:fixed;inset:0;z-index:99999;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;text-align:center;color:#fff;background:radial-gradient(120% 90% at 50% 25%,#14594d 0%,#0a3a32 55%,#03171a 100%);transition:opacity .5s,visibility .5s}
 #splash.out{opacity:0;visibility:hidden}
@@ -174,7 +174,7 @@ nav .fab svg{width:28px;height:28px}
 <div id="ov"></div>
 <script type="module">
 import {initializeApp} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js";
-import {getAuth,GoogleAuthProvider,signInWithPopup,onAuthStateChanged,signOut,deleteUser,reauthenticateWithPopup} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
+import {getAuth,GoogleAuthProvider,signInWithPopup,signInWithRedirect,getRedirectResult,onAuthStateChanged,signOut,deleteUser,reauthenticateWithPopup} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js";
 import {getFirestore,collection,addDoc,doc,setDoc,getDoc,getDocs,deleteDoc,updateDoc,query,where,orderBy,limit,startAfter,onSnapshot,serverTimestamp,increment,arrayUnion,arrayRemove} from "https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -188,7 +188,7 @@ const firebaseConfig = {
 // Cloudinary (للفيديوهات في الشات فقط): املأ القيمتين بعد إنشاء حساب مجاني
 const CLOUD_NAME = "";
 const UPLOAD_PRESET = "";
-const VERSION="v7.6";
+const VERSION="v7.7";
 
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
@@ -430,7 +430,7 @@ function propsView(tab){
     ${p.status==="accepted"?`<button class="btn sec sm" data-a="rate" data-id="${p.id}">${ic("star")} قيّم</button>`:""}
     <button class="btn sec sm" data-a="msg" data-id="${p.id}">${ic("chat")} مراسلة</button></div></div>`;};
   view.innerHTML=`<div class="seg"><button data-t="in" class="${t==="in"?"on":""}">واردة (${pendingIn().length})</button><button data-t="out" class="${t==="out"?"on":""}">مرسلة (${out.length})</button></div>
-  <div id="pl">${list.map(card).join("")||emptyBox("swap",t==="in"?"مفيش طلبات واردة":"لسه مبعتش طلبات","اقترح مقايضة من صفحة أي عرض.")}</div>`;
+  <div id="pl">${list.map(card).join("")||emptyBox("swap",t==="in"?"مفيش طلبات واردة":"لسه مبعتش طلبات","اعرض مقايضة من صفحة أي عرض.")}</div>`;
   view.querySelectorAll(".seg button").forEach(b=>b.onclick=()=>propsView(b.dataset.t));
   $("#pl").onclick=async e=>{const b=e.target.closest("[data-a]");if(!b)return;const p=all.find(x=>x.id===b.dataset.id);if(!p)return;const a=b.dataset.a;
     try{
@@ -517,11 +517,16 @@ async function featureSheet(o){
 const LEGAL_UPDATED="22 نوفمبر 2026";
 const PRIV_HTML="<h3>1. البيانات اللي بنجمعها</h3>\n<ul><li><b>من حساب جوجل عند الدخول:</b> الاسم والبريد الإلكتروني والصورة، من خلال خدمة Firebase Authentication.</li>\n<li><b>اللي بتدخله بنفسك:</b> الاسم المعروض والصورة الشخصية والمحافظة والمدينة ونبذة قصيرة (اختيارية).</li>\n<li><b>المحتوى:</b> عروضك (العنوان والوصف والصور والقيمة التقريبية)، والرسائل والوسائط داخل المحادثات، وطلبات المقايضة، والتقييمات، والبلاغات، وقوائم المفضلة و«أنا دايّر على…» وقائمة الحظر.</li>\n<li><b>على جهازك:</b> تفضيلات بسيطة مثل الوضع الليلي وآخر وقت اطّلعت فيه على الإشعارات.</li></ul>\n<h3>2. ليه بنستخدمها</h3>\n<p>لتشغيل التطبيق: عرض عروضك للمستخدمين الآخرين، والتواصل بين الأطراف، والمطابقة بين العروض، والإشعارات، وحماية المستخدمين ومنع الإساءة، ومعالجة طلبات تمييز العروض.</p>\n<h3>3. مين يشوف إيه</h3>\n<ul><li>اسمك وصورتك ومحافظتك وعروضك وتقييماتك ظاهرة للمستخدمين المسجّلين في التطبيق.</li>\n<li>بريدك الإلكتروني <b>مش بيظهر</b> لأي مستخدم آخر.</li>\n<li>رسائل المحادثة بيشوفها طرفا المحادثة فقط.</li>\n<li>فريق الإدارة بيراجع البلاغات والعروض المبلَّغ عنها وطلبات التمييز.</li></ul>\n<h3>4. التخزين والأمان</h3>\n<p>بياناتك بتتخزّن على خدمات Google Firebase (قاعدة بيانات Firestore ونظام الدخول) وبتتحمي بقواعد وصول تمنع أي مستخدم من الوصول لبيانات غيره. بنقدر نستخدم خدمة تخزين وسائط لرفع الفيديوهات لو اتفعّلت. <b>مش بنبيع بياناتك</b> ومفيش إعلانات أو أدوات تتبّع تابعة لأطراف أخرى.</p>\n<h3>5. حقوقك</h3>\n<ul><li>تقدر تعدّل بياناتك في أي وقت من «تعديل ملفي».</li>\n<li>تقدر تحذف حسابك نهائياً من <b>حسابي ← حذف حسابي</b>. بيتم حذف ملفك الشخصي وكل عروضك وحساب الدخول.</li>\n<li>بعد الحذف ممكن تفضل الرسائل اللي بعتّها ظاهرة للطرف التاني باسم «مستخدم محذوف»، وممكن تحتفظ الإدارة بالتقييمات والبلاغات لأغراض الأمان.</li></ul>\n<h3>6. الأعمار</h3>\n<p>التطبيق مخصص لمن بلغوا 18 سنة فأكثر.</p>\n<h3>7. التعديلات</h3>\n<p>ممكن نحدّث السياسة دي من وقت للتاني، وهنوضّح تاريخ آخر تحديث في أولها.</p>";
 const TERMS_HTML="<h3>1. طبيعة الخدمة</h3>\n<p>«مقايضة» منصة للتعارف بين الناس لتبادل الحاجات. المقايضة والتسليم وأي فرق مالي بتتم بين الطرفين مباشرة، والتطبيق <b>مش طرف فيها ومش ضامن</b> لأي صفقة أو لجودة أي غرض.</p>\n<h3>2. المحتوى الممنوع</h3>\n<ul><li>المخدرات والأسلحة والمسروقات والمنتجات المقلّدة أو غير القانونية.</li>\n<li>الأدوية بوصفة طبية والحيوانات المحمية.</li>\n<li>أي محتوى مسيء أو غير لائق أو مضلل أو احتيالي.</li>\n<li>انتحال شخصية الغير أو استخدام صور مش بتاعتك.</li></ul>\n<h3>3. مسؤوليتك</h3>\n<p>انت المسؤول عن صحة بياناتك ومحتوى عروضك، وعن أي اتفاق بتعمله. اتبع <b>نصائح الأمان</b> في التطبيق: قابل الطرف التاني في مكان عام، وافحص الغرض كويس قبل التبادل، ومتحوّلش فلوس مقدماً لحد متعرفوش.</p>\n<h3>4. صلاحيات الإدارة</h3>\n<p>للإدارة الحق في حذف أي عرض مخالف أو حظر أي حساب مخالف دون إشعار مسبق.</p>\n<h3>5. العروض المميزة</h3>\n<p>التمييز خدمة مدفوعة بتزوّد ظهور عرضك في أول الصفحة للمدة المحددة، ولا تضمن حدوث مقايضة. الدفع بيتم يدوياً ويتفعّل التمييز بعد المراجعة، والمبلغ غير مسترد بعد التفعيل إلا لو حصل خطأ من جانبنا.</p>\n<h3>6. إخلاء المسؤولية</h3>\n<p>التطبيق بيتقدّم «كما هو» ومن غير ضمان لاستمرار الخدمة أو خلوّها من الأخطاء، وممكن نعدّل أو نوقف أي جزء منه.</p>\n<h3>7. التعديلات</h3>\n<p>استمرارك في استخدام التطبيق بعد أي تحديث للشروط معناه موافقتك عليها.</p>";
-function legalView(title,html){view.innerHTML=`<div class="card pad legal"><h2 style="margin:0 0 4px">${title}</h2><div class="mu sm" style="margin-bottom:10px">آخر تحديث: ${LEGAL_UPDATED}</div>${html}</div>`;}
+function legalView(title,html){view.innerHTML=`<div class="card pad legal"><h2 style="margin:0 0 4px">${title}</h2><div class="mu sm" style="margin-bottom:10px">آخر تحديث: ${LEGAL_UPDATED}</div>${html}${contactHTML()}</div>`;}
+const BAD_RX=/(مخدر|حشيش|بانجو|ترامادول|هيروين|كوكايين|ماريجوانا|سلاح|مسدس|ذخيره|ذخيرة|مسروق|مهكر|اختراق حساب|فيزا مسروق)/;
+function typeConfirm(word,msg){return new Promise(res=>{
+  sheet(`<h3>تأكيد حذف الحساب</h3><p class="mu sm" style="margin:0 0 10px">${msg}</p><p style="margin:8px 0">اكتب كلمة <b>${word}</b> للتأكيد:</p><div class="fld"><input id="tcw" autocomplete="off" placeholder="${word}"></div><button class="btn red" id="tco" disabled>متابعة للحذف</button><button class="btn sec" id="tcc" style="margin-top:8px">إلغاء</button>`);
+  $("#tcw").oninput=e=>{$("#tco").disabled=e.target.value.trim()!==word;};
+  $("#tco").onclick=()=>{closeSheet();res(true);};$("#tcc").onclick=()=>{closeSheet();res(false);};
+  $("#sheet .bk").onclick=()=>{closeSheet();res(false);};});}
 async function deleteAccount(){
-  if(!await confirmSheet("هتحذف حسابك نهائياً؟ بياناتك وكل عروضك هتتمسح ومينفعش ترجّعها.","متابعة",true))return;
+  if(!await typeConfirm("حذف","هتحذف حسابك نهائياً؟ بياناتك وكل عروضك هتتمسح ومينفعش ترجّعها."))return;
   try{await reauthenticateWithPopup(auth.currentUser,new GoogleAuthProvider());}catch(e){return toast("لازم تأكّد دخولك بجوجل عشان تحذف الحساب");}
-  if(!await confirmSheet("تأكيد أخير: حذف حسابك وعروضك نهائياً؟","حذف نهائي",true))return;
   const uid=me.uid;toast("جاري حذف حسابك...");
   try{
     const os=await getDocs(query(collection(db,"offers"),where("ownerUid","==",uid)));for(const d of os.docs)await deleteDoc(doc(db,"offers",d.id));
@@ -550,7 +555,8 @@ const VIEWS={home:()=>homeView(),favs:()=>favsView(),chats:()=>chatsView(),me:()
 function go(v,arg,mode){
   const cfg=V[v];stopChat();closeDrawer();closeSheet();
   const st={v,arg,d:cfg.tab?0:(mode==="replace"?depth:depth+1)};
-  if(cfg.tab||mode==="replace")history.replaceState(st,"");else history.pushState(st,"");
+  const url=location.pathname+(v==="offer"&&arg?"?o="+encodeURIComponent(arg):"");
+  try{if(cfg.tab||mode==="replace")history.replaceState(st,"",url);else history.pushState(st,"",url);}catch{}
   depth=st.d;render(v,arg);
 }
 function render(v,arg){
@@ -575,9 +581,15 @@ function loginView(){
   <div class="ft">${ic("tag")}<span>اعرض أي حاجة وقول عاوز تقايضها بإيه</span></div>
   <div class="ft">${ic("chat")}<span>اتفق مع الطرف التاني في شات داخلي</span></div>
   <div class="ft">${ic("shield")}<span>تقييمات وبروفايلات حقيقية للثقة</span></div>
-  <button class="gbtn" id="g">${googleSVG}<span>الدخول بحساب جوجل</span></button></div></div>`;
-  $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){toast("تعذر الدخول: "+(e.code||e.message));}};
+  <button class="gbtn" id="g">${googleSVG}<span>الدخول بحساب جوجل</span></button>
+  <button class="mu sm" id="gr" style="background:none;border:0;color:#fff;opacity:.85;margin-top:12px;text-decoration:underline;font-family:inherit">النافذة مش بتفتح؟ ادخل بطريقة تانية</button></div></div>`;
+  const viaRedirect=async()=>{try{await signInWithRedirect(auth,new GoogleAuthProvider());}catch(e){toast("تعذر الدخول: "+(e.code||e.message));}};
+  $("#g").onclick=async()=>{try{await signInWithPopup(auth,new GoogleAuthProvider());}catch(e){
+    if(["auth/popup-blocked","auth/operation-not-supported-in-this-environment","auth/web-storage-unsupported"].includes(e.code))return viaRedirect();
+    if(!["auth/popup-closed-by-user","auth/cancelled-popup-request"].includes(e.code))toast("تعذر الدخول: "+(e.code||e.message));}};
+  $("#gr").onclick=viaRedirect;
 }
+getRedirectResult(auth).catch(e=>{if(e&&e.code&&e.code!=="auth/no-auth-event")toast("تعذر الدخول: "+e.code);});
 let DEEP=null;try{DEEP=new URLSearchParams(location.search).get("o");}catch{}
 onAuthStateChanged(auth,async u=>{
   me=u;prof=null;isAdm=false;pendingReports=0;if(unsubFeat){unsubFeat();unsubFeat=null;}featPending=0;watchUnread();watchOffers();watchProps();
@@ -774,6 +786,7 @@ async function offerForm(id){
   $("#s").onclick=async()=>{const d={title:$("#t").value.trim(),desc:$("#d").value.trim(),want:$("#w").value.trim(),cat:$("#c").value,cond:$("#cd").value,country:$("#ctr").value,gov:$("#g").value,city:$("#ci").value.trim(),value:Math.max(0,Math.round(+$("#vl").value||0)),cash:$("#ca").checked};
     if(!ph.length)return toast("ضيف صورة واحدة على الأقل");
     if(!d.title||!d.want||!d.cat||!d.cond||!d.gov||!d.city)return toast("كمّل الحقول اللي عليها نجمة *");
+    if(BAD_RX.test(norm([d.title,d.desc,d.want].join(" "))))return toast("العرض فيه محتوى ممنوع حسب شروط الاستخدام");
     if(ph.join("").length>850000)return toast("الصور كبيرة، قلل العدد");
     $("#s").disabled=true;
     try{
@@ -948,11 +961,13 @@ function safetyView(){
   const t=[["قابل الطرف التاني في مكان عام","اختار مكان مزدحم ومعروف وفي النهار، وخلّي حد يعرف إنت رايح فين."],["افحص الحاجة كويس","جرّبها وتأكد من حالتها قبل ما توافق على المقايضة."],["ما تدفعش فلوس مقدماً","أي طلب عربون أو تحويل قبل اللقاء علامة نصب."],["ما تشاركش بياناتك الحساسة","كلمات السر وأكواد التحقق والبيانات البنكية ما تتبعتش لأي حد."],["خلّي الكلام جوه التطبيق","الشات الداخلي بيحفظ حقك لو حصلت مشكلة."],["بلّغ عن أي حاجة مشبوهة","زرار «إبلاغ» في أي عرض بيوصلنا ونراجعه."]];
   view.innerHTML=t.map((x,i)=>`<div class="card tip"><div class="n">${i+1}</div><div><b>${x[0]}</b><div class="mu sm" style="margin-top:3px;line-height:1.7">${x[1]}</div></div></div>`).join("");
 }
+const CONTACT={email:"",wa:"201093852944"};
+const contactHTML=()=>{const b=[];if(CONTACT.wa)b.push(`<a class="btn sec sm" href="https://wa.me/${CONTACT.wa}" target="_blank" rel="noopener">واتساب</a>`);if(CONTACT.email)b.push(`<a class="btn sec sm" href="mailto:${CONTACT.email}">إيميل</a>`);return b.length?`<div style="margin-top:14px"><div class="mu sm" style="margin-bottom:6px">للدعم والإبلاغ عن مشكلة:</div><div class="row2">${b.join("")}</div></div>`:"";};
 function aboutView(){
   view.innerHTML=`<div class="card pad ctr"><div class="logo" style="width:84px;height:84px;border-radius:26px;margin:0 auto 12px;background:linear-gradient(135deg,var(--p),var(--p2));color:#fff"><svg class="i" style="width:46px;height:46px" viewBox="0 0 24 24">${IC.swap}</svg></div>
   <h2>مقايضة</h2><div class="mu">الإصدار ${VERSION}</div><p style="line-height:1.9">منصة بسيطة وآمنة للمقايضة. اعرض اللي مش محتاجه، واتفق مع الناس على اللي محتاجه، من غير فلوس.</p>
   <button class="btn sec" id="sa">${ic("share")} شارك التطبيق مع أصحابك</button>
-  <div class="row2" style="margin-top:10px"><button class="btn sec sm" data-g="privacy">سياسة الخصوصية</button><button class="btn sec sm" data-g="terms">شروط الاستخدام</button></div></div>`;$("#sa").onclick=shareApp;view.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>go(b.dataset.g));
+  <div class="row2" style="margin-top:10px"><button class="btn sec sm" data-g="privacy">سياسة الخصوصية</button><button class="btn sec sm" data-g="terms">شروط الاستخدام</button></div>${contactHTML()}</div>`;$("#sa").onclick=shareApp;view.querySelectorAll("[data-g]").forEach(b=>b.onclick=()=>go(b.dataset.g));
 }
 
 if("serviceWorker" in navigator)navigator.serviceWorker.register("sw.js").catch(()=>{});
